@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rosto procedural — rig facial</title>
+<title>Personagem procedural — corpo + rig facial</title>
 <style>
 :root {
   --bg: #f4f1ec; --panel: #ffffff; --ink: #1d1b19; --muted: #6d675f; --line: #ddd6cb;
@@ -36,6 +36,7 @@ aside { background: var(--panel); border-left: 1px solid var(--line); overflow-y
 h1 { font-size: 15px; margin: 0 0 2px; font-weight: 650; letter-spacing: .01em; }
 .sub { font-size: 12px; color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.row.three { grid-template-columns: 1fr 1fr 1fr; }
 button {
   font: inherit; font-size: 13px; padding: 10px 12px; border-radius: 9px; cursor: pointer;
   border: 1px solid var(--line); background: transparent; color: var(--ink);
@@ -62,8 +63,13 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
   <div id="err">Não foi possível iniciar o WebGL neste navegador.</div>
 </div>
 <aside>
-  <h1>Rosto procedural · rig facial</h1>
-  <p class="sub">15 morph targets na malha; pálpebras, olhos e cabeça são nós animados. Arraste para orbitar. Os botões tocam clipes glTF; os sliders são o rig de controle.</p>
+  <h1>Personagem procedural · corpo + rig facial</h1>
+  <p class="sub">Corpo inteiro com clipes procedurais (correr, pular, acenar); o rosto mantém 15 morph targets. Arraste para orbitar. Os botões tocam clipes; os sliders são o rig facial.</p>
+  <div class="row three">
+    <button class="primary" data-clip="Run">🏃 Correr</button>
+    <button class="primary" data-clip="Jump">🤸 Pular</button>
+    <button class="primary" data-clip="Wave">👋 Acenar</button>
+  </div>
   <div class="row">
     <button class="primary" data-clip="Smile">😊 Sorrir</button>
     <button class="primary" data-clip="Sad">😢 Ficar triste</button>
@@ -5066,11 +5072,11 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
 
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(22, 1, 0.1, 50);
-  camera.position.set(0, 0, 3.7);
+  camera.position.set(0.45, -0.95, 11);
   var controls = new THREE.OrbitControls(camera, canvas);
-  controls.target.set(0, -0.02, 0);
+  controls.target.set(0, -1.42, 0);
   controls.enableDamping = true; controls.enablePan = false;
-  controls.minDistance = 1.6; controls.maxDistance = 7;
+  controls.minDistance = 1.2; controls.maxDistance = 16;
   controls.update();
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.55));
@@ -5090,7 +5096,7 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
   var bin = atob(GLB_B64), bytes = new Uint8Array(bin.length);
   for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
 
-  var faceMeshes = [], dict = {}, names = [], mixer, actions = {}, current = null;
+  var root = null, faceMeshes = [], dict = {}, names = [], mixer, actions = {}, current = null;
   var head, eyeL, eyeR, lids = {};
   var mode = 'clip';   // 'clip' while an animation plays, 'manual' once a slider is touched
   var M = { w: {}, blink: 0, droop: 0, squint: 0, gp: 0, gy: 0, hp: 0, hy: 0, hr: 0 };
@@ -5189,8 +5195,115 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
   window.faceRig = { play: play, get targets() { return names.slice(); },
     set: function (o) { enterManual(); for (var k in o) M.w[k] = o[k]; applyManual(); } };
 
+  // ==== corpo inteiro procedural ====
+  var EU = new THREE.Euler();
+  function eul(x, y, z) { return new THREE.Quaternion().setFromEuler(EU.set(x, y, z)); }
+  function rotT(node, times, es) {
+    var v = [];
+    es.forEach(function (e) { var q = eul(e[0], e[1], e[2]); v.push(q.x, q.y, q.z, q.w); });
+    return new THREE.QuaternionKeyframeTrack(node + '.quaternion', times, v);
+  }
+  function vecT(node, prop, times, pts) {
+    var v = [];
+    pts.forEach(function (p) { v.push(p[0], p[1], p[2]); });
+    return new THREE.VectorKeyframeTrack(node + '.' + prop, times, v);
+  }
+
+  function buildBody() {
+    var ca = faceMeshes[0].geometry.attributes.color;
+    var skinC = new THREE.Color(0.5, 0.33, 0.25);
+    if (ca && ca.count) {  // tom de pele médio do próprio rosto
+      skinC.setRGB(0, 0, 0); var n = 0;
+      for (var i = 0; i < ca.count; i += 5) {
+        skinC.r += Math.max(0, ca.getX(i)); skinC.g += Math.max(0, ca.getY(i)); skinC.b += Math.max(0, ca.getZ(i)); n++;
+      }
+      skinC.multiplyScalar(1 / n);
+    }
+    var skin = new THREE.MeshStandardMaterial({ color: skinC, roughness: 0.6 });
+    var shirt = new THREE.MeshStandardMaterial({ color: 0xa34a35, roughness: 0.85 });
+    var pants = new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.85 });
+    var shoes = new THREE.MeshStandardMaterial({ color: 0x26262b, roughness: 0.7 });
+    function node(parent, name, x, y, z) { var g = new THREE.Object3D(); g.name = name; g.position.set(x, y, z); parent.add(g); return g; }
+    function part(parent, geo, mat, x, y, z) { var m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; }
+
+    var bob = node(root, 'B_Bob', 0, 0, 0);
+    bob.attach(head);                                                     // cabeça e corpo se movem juntos
+    part(bob, new THREE.CylinderGeometry(0.08, 0.105, 0.34, 14), skin, 0, -0.645, -0.12);  // pescoço
+    var torso = node(bob, 'B_Torso', 0, -0.82, -0.12);
+    part(torso, new THREE.CapsuleGeometry(0.23, 0.42, 6, 16), shirt, 0, -0.45, 0);        // tórax
+    part(torso, new THREE.CapsuleGeometry(0.19, 0.14, 6, 16), pants, 0, -0.86, 0);        // quadril
+    part(torso, new THREE.SphereGeometry(0.11, 14, 12), shirt, 0.30, -0.10, 0);           // ombro E
+    part(torso, new THREE.SphereGeometry(0.11, 14, 12), shirt, -0.30, -0.10, 0);         // ombro D
+    [-1, 1].forEach(function (s) {
+      var L = s < 0 ? 'L' : 'R';
+      var arm = node(torso, 'B_Arm' + L, 0.34 * s, -0.10, 0);
+      part(arm, new THREE.CapsuleGeometry(0.08, 0.32, 5, 12), shirt, 0, -0.26, 0);        // braço
+      var fore = node(arm, 'B_Forearm' + L, 0, -0.50, 0);
+      part(fore, new THREE.CapsuleGeometry(0.068, 0.28, 5, 12), skin, 0, -0.22, 0);       // antebraço
+      part(fore, new THREE.SphereGeometry(0.088, 14, 12), skin, 0, -0.50, 0.02);         // mão
+    });
+    [-1, 1].forEach(function (s) {
+      var L = s < 0 ? 'L' : 'R';
+      var leg = node(bob, 'B_Leg' + L, 0.17 * s, -1.95, -0.15);
+      part(leg, new THREE.CapsuleGeometry(0.12, 0.40, 5, 14), pants, 0, -0.34, 0);        // coxa
+      var shin = node(leg, 'B_Shin' + L, 0, -0.64, 0.02);
+      part(shin, new THREE.CapsuleGeometry(0.10, 0.40, 5, 14), pants, 0, -0.36, 0);      // canela
+      part(shin, new THREE.BoxGeometry(0.17, 0.09, 0.38), shoes, 0, -0.70, 0.10);         // pé
+    });
+    var shadow = part(root, new THREE.CircleGeometry(0.55, 32).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16 }), 0, -3.36, -0.05);
+    shadow.name = 'B_Shadow';
+  }
+
+  function registerBodyClips() {
+    var T, a;
+    // ---- Correr: um ciclo de passada, no lugar ----
+    T = [0, 0.18, 0.36, 0.54, 0.72];
+    var run = new THREE.AnimationClip('Run', 0.72, [
+      vecT('B_Bob', 'position', T, [[0,0,0],[0,-0.08,0],[0,0,0],[0,-0.08,0],[0,0,0]]),
+      rotT('B_LegL', T, [[-0.95,0,0],[-0.10,0,0],[0.75,0,0],[-0.10,0,0],[-0.95,0,0]]),
+      rotT('B_ShinL', T, [[0.5,0,0],[1.2,0,0],[0.3,0,0],[1.2,0,0],[0.5,0,0]]),
+      rotT('B_LegR', T, [[0.75,0,0],[-0.10,0,0],[-0.95,0,0],[-0.10,0,0],[0.75,0,0]]),
+      rotT('B_ShinR', T, [[0.3,0,0],[1.2,0,0],[0.5,0,0],[1.2,0,0],[0.3,0,0]]),
+      rotT('B_ArmL', T, [[0.8,0,0.10],[0,0,0.10],[-0.7,0,0.10],[0,0,0.10],[0.8,0,0.10]]),
+      rotT('B_ArmR', T, [[-0.7,0,-0.10],[0,0,-0.10],[0.8,0,-0.10],[0,0,-0.10],[-0.7,0,-0.10]]),
+      rotT('B_ForearmL', T, [[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0]]),
+      rotT('B_ForearmR', T, [[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0]]),
+      rotT('B_Torso', T, [[-0.14,0.05,0],[-0.14,0,0],[-0.14,-0.05,0],[-0.14,0,0],[-0.14,0.05,0]])
+    ]);
+    a = mixer.clipAction(run); a.setLoop(THREE.LoopRepeat, Infinity); actions.Run = a;
+
+    // ---- Pular: agachar, impulsionar, apex, aterrissar ----
+    T = [0, 0.28, 0.5, 0.75, 1.0, 1.25, 1.5];
+    var jump = new THREE.AnimationClip('Jump', 1.5, [
+      vecT('B_Bob', 'position', T, [[0,0,0],[0,-0.12,0],[0,0.5,0],[0,0.8,0],[0,-0.10,0],[0,-0.03,0],[0,0,0]]),
+      vecT('B_Shadow', 'scale', T, [[1,1,1],[1.10,1,1.10],[0.75,1,0.75],[0.55,1,0.55],[1.05,1,1.05],[1,1,1],[1,1,1]]),
+      rotT('B_LegL', T, [[0,0,0],[-0.55,0,0],[-0.25,0,0],[-0.75,0,0],[-0.9,0,0],[-0.25,0,0],[0,0,0]]),
+      rotT('B_LegR', T, [[0,0,0],[-0.55,0,0],[-0.25,0,0],[-0.75,0,0],[-0.9,0,0],[-0.25,0,0],[0,0,0]]),
+      rotT('B_ShinL', T, [[0,0,0],[0.95,0,0],[0.15,0,0],[1.05,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
+      rotT('B_ShinR', T, [[0,0,0],[0.95,0,0],[0.15,0,0],[1.05,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
+      rotT('B_Torso', T, [[0,0,0],[-0.28,0,0],[0.06,0,0],[0.10,0,0],[-0.24,0,0],[-0.06,0,0],[0,0,0]]),
+      rotT('B_ArmL', T, [[0,0,0],[0.55,0,0.12],[-1.9,0,-0.30],[-2.35,0,-0.45],[-0.5,0,-0.10],[-0.15,0,0],[0,0,0]]),
+      rotT('B_ArmR', T, [[0,0,0],[0.55,0,-0.12],[-1.9,0,0.30],[-2.35,0,0.45],[-0.5,0,0.10],[-0.15,0,0],[0,0,0]]),
+      rotT('B_ForearmL', T, [[0,0,0],[-0.35,0,0],[-0.10,0,0],[-0.10,0,0],[-0.50,0,0],[-0.10,0,0],[0,0,0]]),
+      rotT('B_ForearmR', T, [[0,0,0],[-0.35,0,0],[-0.10,0,0],[-0.10,0,0],[-0.50,0,0],[-0.10,0,0],[0,0,0]])
+    ]);
+    a = mixer.clipAction(jump); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Jump = a;
+
+    // ---- Acenar: levanta o braço direito e acena ----
+    var WT = [0, 0.3, 2.05, 2.5, 2.8];
+    var FT = [0, 0.3, 0.55, 0.8, 1.05, 1.3, 1.55, 1.8, 2.05, 2.5, 2.8];
+    var wave = new THREE.AnimationClip('Wave', 2.8, [
+      rotT('B_ArmR', WT, [[0,0,0],[0,0,-2.35],[0,0,-2.35],[0,0,0],[0,0,0]]),
+      rotT('B_ForearmR', FT, [[0,0,0],[0,0,-0.35],[0,0,0.55],[0,0,-0.55],[0,0,0.55],[0,0,-0.55],[0,0,0.55],[0,0,-0.35],[0,0,0],[0,0,0],[0,0,0]]),
+      rotT('B_Torso', WT, [[0,0,0],[0.04,0,-0.06],[0.04,0,-0.06],[0,0,0],[0,0,0]]),
+      rotT('Head', WT, [[0,0,0],[0,0,-0.12],[0,0,-0.12],[0,0,0],[0,0,0]])
+    ]);
+    a = mixer.clipAction(wave); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Wave = a;
+  }
+
   new THREE.GLTFLoader().parse(bytes.buffer, '', function (gltf) {
-    var root = gltf.scene; scene.add(root);
+    root = gltf.scene; scene.add(root);
     root.traverse(function (o) { if (o.isMesh && o.morphTargetInfluences && o.morphTargetInfluences.length) faceMeshes.push(o); });
     dict = faceMeshes[0].morphTargetDictionary;
     names = Object.keys(dict).sort(function (a, b) { return dict[a] - dict[b]; });
@@ -5205,6 +5318,8 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
       actions[c.name] = a;
     });
     mixer.addEventListener('finished', function (e) { if (e.action !== actions.Idle) play('Idle'); });
+    buildBody();
+    registerBodyClips();
     buildControls();
     document.querySelectorAll('button[data-clip]').forEach(function (b) {
       b.addEventListener('click', function () { play(b.getAttribute('data-clip')); });
@@ -5215,7 +5330,7 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
       applyManual();
     });
     play('Idle');
-    statusEl.textContent = names.length + ' morph targets · ' + gltf.animations.length + ' clipes';
+    statusEl.textContent = names.length + ' morph targets · ' + (gltf.animations.length + 3) + ' clipes';
   }, function (err) { statusEl.textContent = 'erro ao carregar o modelo'; console.error(err); });
 
   var clock = new THREE.Clock(), frame = 0;
