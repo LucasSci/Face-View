@@ -1,0 +1,6 @@
+{
+  "name": "Face-View",
+  "description": "Procedural and custom 3D Blender GLB character viewer with animation clips and facial morph target rig",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

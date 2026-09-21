@@ -50,6 +50,74 @@ h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: v
 .ctl output { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11.5px; }
 input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 3px 0 0; }
 .hint { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-top: 14px; }
+.upload-card {
+  background: var(--stage-top); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; margin-bottom: 16px;
+}
+.upload-btn {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent);
+  font-weight: 600; padding: 10px 14px; border-radius: 8px; cursor: pointer; transition: opacity 0.15s;
+}
+.upload-btn:hover { opacity: 0.92; }
+.drop-zone {
+  border: 2px dashed var(--line); border-radius: 8px; padding: 10px;
+  text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 8px;
+  cursor: pointer; transition: all 0.2s;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--accent); background: rgba(181, 72, 47, 0.08); color: var(--ink);
+}
+.model-badge {
+  display: flex; align-items: center; justify-content: space-between; font-size: 11px;
+  color: var(--muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);
+}
+.model-badge strong { color: var(--ink); }
+.btn-reset-model {
+  background: transparent; border: 1px solid var(--line); font-size: 11px; padding: 3px 8px;
+  border-radius: 6px; cursor: pointer; color: var(--muted);
+}
+.btn-reset-model:hover { color: var(--ink); border-color: var(--muted); }
+.chip {
+  font-size: 11px; padding: 4px 8px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--stage-top); color: var(--ink); cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.prompt-box {
+  background: var(--stage-top); border: 1px solid var(--line); border-radius: 9px;
+  padding: 10px; margin-bottom: 14px;
+}
+.tabs-nav {
+  display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 18px 0 12px;
+}
+.tab-btn {
+  flex: 1; background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: var(--muted); font-size: 11.5px; font-weight: 600; padding: 7px 6px; cursor: pointer;
+  border-radius: 0; transition: all 0.15s; white-space: nowrap; text-align: center;
+}
+.tab-btn.active {
+  color: var(--ink); border-bottom-color: var(--accent); background: rgba(0,0,0,0.02);
+}
+.bone-group-header {
+  font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+  margin: 12px 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--line);
+}
+.bone-reset-btn {
+  width: 100%; margin-top: 14px; padding: 7px 10px; font-size: 11.5px; border-radius: 6px;
+  background: var(--stage-top); border: 1px solid var(--line); color: var(--ink); cursor: pointer;
+  font-weight: 600; transition: background 0.15s;
+}
+.bone-reset-btn:hover { background: var(--line); }
+#drop-overlay {
+  position: absolute; inset: 0; background: rgba(18, 19, 22, 0.78); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; flex-direction: column;
+  color: #ffffff; z-index: 50; pointer-events: none; text-align: center; padding: 20px;
+}
+#drop-overlay.active { display: flex; }
+#drop-overlay .icon { font-size: 48px; margin-bottom: 12px; }
+#drop-overlay .title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+#drop-overlay .desc { font-size: 13px; opacity: 0.8; }
 @media (max-width: 820px) {
   body { grid-template-columns: 1fr; grid-template-rows: 56vh 1fr; }
   aside { border-left: 0; border-top: 1px solid var(--line); }
@@ -61,25 +129,84 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
   <canvas id="c"></canvas>
   <div id="status">carregando modelo…</div>
   <div id="err">Não foi possível iniciar o WebGL neste navegador.</div>
+  <div id="drop-overlay">
+    <div class="icon">📦</div>
+    <div class="title">Solte o arquivo do Blender (.glb)</div>
+    <div class="desc">O modelo será carregado instantaneamente com suas animações e shape keys</div>
+  </div>
 </div>
 <aside>
-  <h1>Personagem procedural · corpo + rig facial</h1>
-  <p class="sub">Corpo inteiro com clipes procedurais (correr, pular, acenar); o rosto mantém 15 morph targets. Arraste para orbitar. Os botões tocam clipes; os sliders são o rig facial.</p>
-  <div class="row three">
-    <button class="primary" data-clip="Run">🏃 Correr</button>
-    <button class="primary" data-clip="Jump">🤸 Pular</button>
-    <button class="primary" data-clip="Wave">👋 Acenar</button>
+  <h1 id="app-title">Visualizador & Gerador de Animações 3D</h1>
+  <p class="sub" id="app-sub">Animações corporais e faciais procedurais aplicadas automaticamente a qualquer modelo do Blender (.glb/.gltf).</p>
+
+  <div class="upload-card">
+    <input type="file" id="glb-file-input" accept=".glb,.gltf" style="display:none">
+    <button type="button" class="upload-btn" id="btn-browse-glb">
+      <span>📂</span> <span>Carregar modelo do Blender (.glb)</span>
+    </button>
+    <div class="drop-zone" id="drop-zone">
+      Arraste e solte o arquivo <strong>.glb</strong> aqui
+    </div>
+    <div class="model-badge" id="model-badge">
+      <span id="model-badge-text">Modelo: <strong>Personagem padrão</strong></span>
+      <button type="button" class="btn-reset-model" id="btn-restore-default" style="display:none">↺ Restaurar original</button>
+    </div>
+
+    <!-- Indicador do Esqueleto nativo do GLB -->
+    <div id="skeleton-info-card" style="display:none; background:var(--stage-top); border:1px solid var(--line); border-radius:8px; padding:9px 11px; margin-top:8px; font-size:11.5px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span>🦴 <strong id="skeleton-status-title">Esqueleto nativo do GLB</strong></span>
+        <span id="skeleton-bone-count" style="color:var(--accent); font-weight:700; font-size:11px;">0 ossos</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:11px;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="chk-show-skeleton" style="accent-color:var(--accent);">
+          <span>Visualizar esqueleto (Wireframe)</span>
+        </label>
+        <span id="skeleton-rig-status" style="color:var(--muted);">Rig mapeado</span>
+      </div>
+    </div>
+
+    <label id="lbl-procedural-body" style="display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink); margin-top:8px; cursor:pointer;">
+      <input type="checkbox" id="chk-procedural-body" checked style="accent-color: var(--accent);">
+      <span>Anexar corpo procedural de fallback (apenas se não houver esqueleto)</span>
+    </label>
   </div>
-  <div class="row">
-    <button class="primary" data-clip="Smile">😊 Sorrir</button>
-    <button class="primary" data-clip="Sad">😢 Ficar triste</button>
+
+  <h2>Criar Animação por Prompt ✨</h2>
+  <div class="prompt-box">
+    <div style="display:flex; gap:6px;">
+      <input type="text" id="prompt-input" placeholder="Ex: acenar com a mão direita e sorrir..." style="flex:1; padding:7px 10px; font-size:12px; border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--ink);">
+      <button type="button" class="primary" id="btn-run-prompt" style="padding:7px 12px; font-size:12px; font-weight:600;">Gerar</button>
+    </div>
+    <div class="prompt-chips" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;">
+      <button type="button" class="chip" data-prompt="acenar com a mão e sorrir">👋 Acenar & Sorrir</button>
+      <button type="button" class="chip" data-prompt="andar com postura natural balançando os braços">🚶 Caminhada do Esqueleto</button>
+      <button type="button" class="chip" data-prompt="levantar os dois braços alegremente comemorando">🙆 Levantar Braços</button>
+      <button type="button" class="chip" data-prompt="fazer uma reverência curvando o tronco e cabeça">🙇 Reverência</button>
+      <button type="button" class="chip" data-prompt="agachar com as pernas e olhar para cima">🧘 Agachar & Olhar</button>
+      <button type="button" class="chip" data-prompt="dançar balançando o corpo e os braços">💃 Dançar</button>
+      <button type="button" class="chip" data-prompt="falar animadamente mexendo a boca e gesticulando">🗣️ Diálogo & Gesto</button>
+      <button type="button" class="chip" data-prompt="olhar assustado de boca aberta e recuar o corpo">😲 Susto Corporal</button>
+    </div>
   </div>
-  <div class="row">
-    <button data-clip="Idle" class="active">Idle (respirar/piscar)</button>
-    <button id="reset">Neutro</button>
+
+  <h2>Animações do Modelo</h2>
+  <div id="clips-container"></div>
+
+  <!-- Abas de Controle Manual: Facial vs Esqueleto -->
+  <div class="tabs-nav">
+    <button type="button" id="tab-btn-face" class="tab-btn active">Expressões (Shape Keys)</button>
+    <button type="button" id="tab-btn-skeleton" class="tab-btn">🦴 Esqueleto (Ossos & Poses)</button>
   </div>
-  <div id="ctls"></div>
-  <p class="hint">Os correctivos <code>cor_smileOpen*</code> são calculados automaticamente (sorriso × boca aberta), como um driver no Blender.</p>
+
+  <div id="tab-content-face">
+    <div id="ctls"></div>
+  </div>
+  <div id="tab-content-skeleton" style="display:none;">
+    <div id="ctls-skeleton"></div>
+  </div>
+  <p class="hint" id="hint-text">As animações do esqueleto e as shape keys funcionam em tempo real. Você também pode posar manualmente nos sliders acima.</p>
 </aside>
 
 <script>/**
@@ -5114,16 +5241,23 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
     var sl = w.mouthSmileLeft || 0, sr = w.mouthSmileRight || 0, j = w.jawOpen || 0;
     w.cor_smileOpenLeft = sl * j; w.cor_smileOpenRight = sr * j;         // "drivers"
     faceMeshes.forEach(function (m) {
-      for (var n in dict) m.morphTargetInfluences[dict[n]] = w[n] || 0;
+      if (!m.morphTargetInfluences) return;
+      for (var n in dict) {
+        if (dict[n] !== undefined) m.morphTargetInfluences[dict[n]] = w[n] || 0;
+      }
     });
-    head.quaternion.setFromEuler(eu.set(M.hp, M.hy, M.hr, 'YXZ'));
-    var eq = new THREE.Quaternion().setFromEuler(eu.set(M.gp, M.gy, 0, 'YXZ'));
-    eyeL.quaternion.copy(eq); eyeR.quaternion.copy(eq);
-    var a = lidAngles(M.blink, M.squint, M.droop, M.gp);
-    ['L', 'R'].forEach(function (s) {
-      lids['up' + s].quaternion.setFromEuler(eu.set(a.up, 0, 0));
-      lids['lo' + s].quaternion.setFromEuler(eu.set(a.lo, 0, 0));
-    });
+    if (head) head.quaternion.setFromEuler(eu.set(M.hp, M.hy, M.hr, 'YXZ'));
+    if (eyeL && eyeR) {
+      var eq = new THREE.Quaternion().setFromEuler(eu.set(M.gp, M.gy, 0, 'YXZ'));
+      eyeL.quaternion.copy(eq); eyeR.quaternion.copy(eq);
+    }
+    if (lids && lids.upL && lids.loL && lids.upR && lids.loR) {
+      var a = lidAngles(M.blink, M.squint, M.droop, M.gp);
+      ['L', 'R'].forEach(function (s) {
+        lids['up' + s].quaternion.setFromEuler(eu.set(a.up, 0, 0));
+        lids['lo' + s].quaternion.setFromEuler(eu.set(a.lo, 0, 0));
+      });
+    }
   }
 
   // ---- control rig (sliders) ----
@@ -5137,32 +5271,73 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
                               ['@gp', 'Olhar ↓', -0.4, 0.4], ['@gy', 'Olhar →', -0.5, 0.5]]],
     ['Cabeça (nó animado)', [['@hp', 'Inclinar ↓', -0.3, 0.3], ['@hy', 'Girar', -0.5, 0.5], ['@hr', 'Rolar', -0.3, 0.3]]]
   ];
-  function buildControls() {
-    var host = document.getElementById('ctls');
-    GROUPS.forEach(function (g) {
-      var h = document.createElement('h2'); h.textContent = g[0]; host.appendChild(h);
-      g[1].forEach(function (c) {
-        var key = c[0], lab = c[1], lo = c.length > 2 ? c[2] : 0, hi = c.length > 2 ? c[3] : 1;
-        var wrap = document.createElement('div'); wrap.className = 'ctl';
-        var l = document.createElement('label'); l.innerHTML = lab + (key[0] === '@' ? '' : ' <code>' + key + '</code>');
-        var out = document.createElement('output'); out.textContent = '0.00';
-        var inp = document.createElement('input'); inp.type = 'range'; inp.min = lo; inp.max = hi; inp.step = 0.01; inp.value = 0;
-        wrap.appendChild(l); wrap.appendChild(out); wrap.appendChild(inp); host.appendChild(wrap);
-        sliders[key] = { input: inp, out: out };
-        inp.addEventListener('input', function () {
-          enterManual();
-          var v = parseFloat(inp.value);
-          if (key[0] === '@') M[key.slice(1)] = v; else M.w[key] = v;
-          out.textContent = v.toFixed(2); applyManual();
-        });
-      });
+
+  function addSliderControl(host, key, lab, lo, hi) {
+    var wrap = document.createElement('div'); wrap.className = 'ctl';
+    var l = document.createElement('label');
+    l.innerHTML = lab + (key[0] === '@' ? '' : ' <code>' + key + '</code>');
+    var out = document.createElement('output'); out.textContent = '0.00';
+    var inp = document.createElement('input'); inp.type = 'range'; inp.min = lo; inp.max = hi; inp.step = 0.01; inp.value = 0;
+    wrap.appendChild(l); wrap.appendChild(out); wrap.appendChild(inp); host.appendChild(wrap);
+    sliders[key] = { input: inp, out: out };
+    inp.addEventListener('input', function () {
+      enterManual();
+      var v = parseFloat(inp.value);
+      if (key[0] === '@') M[key.slice(1)] = v; else M.w[key] = v;
+      out.textContent = v.toFixed(2); applyManual();
     });
   }
 
+  function buildControls() {
+    var host = document.getElementById('ctls');
+    host.innerHTML = '';
+    sliders = {};
+    var matchedKeys = {};
+
+    GROUPS.forEach(function (g) {
+      var validItems = [];
+      g[1].forEach(function (c) {
+        var key = c[0];
+        if (key[0] === '@') {
+          if (key.startsWith('@h') && head) validItems.push(c);
+          else if ((key.startsWith('@g') || key === '@blink' || key === '@droop' || key === '@squint') && eyeL && eyeR) validItems.push(c);
+        } else if (dict[key] !== undefined) {
+          validItems.push(c);
+          matchedKeys[key] = true;
+        }
+      });
+      if (validItems.length > 0) {
+        var h = document.createElement('h2'); h.textContent = g[0]; host.appendChild(h);
+        validItems.forEach(function (c) {
+          addSliderControl(host, c[0], c[1], c.length > 2 ? c[2] : 0, c.length > 2 ? c[3] : 1);
+        });
+      }
+    });
+
+    // Custom morph targets from Blender shape keys:
+    var customKeys = names.filter(function (n) { return !matchedKeys[n]; });
+    if (customKeys.length > 0) {
+      var h = document.createElement('h2');
+      h.textContent = 'Shape Keys do Modelo (' + customKeys.length + ')';
+      host.appendChild(h);
+      customKeys.forEach(function (key) {
+        addSliderControl(host, key, key, 0, 1);
+      });
+    }
+
+    if (names.length === 0 && !head) {
+      var info = document.createElement('p');
+      info.className = 'hint';
+      info.textContent = 'Nenhuma Shape Key encontrada neste modelo 3D.';
+      host.appendChild(info);
+    }
+  }
+
   function syncSlidersFromScene() {
+    if (!faceMeshes || !faceMeshes[0] || !faceMeshes[0].morphTargetInfluences) return;
     var m = faceMeshes[0];
     for (var key in sliders) {
-      if (key[0] === '@') continue;
+      if (key[0] === '@' || dict[key] === undefined) continue;
       var v = m.morphTargetInfluences[dict[key]] || 0;
       sliders[key].input.value = v; sliders[key].out.textContent = v.toFixed(2);
     }
@@ -5170,10 +5345,13 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
 
   function enterManual() {
     if (mode === 'manual') return;
-    // start the manual pose from what is on screen now, so nothing pops
-    var m = faceMeshes[0];
-    M.w = {}; for (var n in dict) M.w[n] = m.morphTargetInfluences[dict[n]] || 0;
-    mixer.stopAllAction(); mode = 'manual'; setActiveBtn(null);
+    M.w = {};
+    if (faceMeshes && faceMeshes[0] && faceMeshes[0].morphTargetInfluences) {
+      var m = faceMeshes[0];
+      for (var n in dict) M.w[n] = m.morphTargetInfluences[dict[n]] || 0;
+    }
+    if (mixer) mixer.stopAllAction();
+    mode = 'manual'; setActiveBtn(null);
   }
 
   function setActiveBtn(name) {
@@ -5195,7 +5373,7 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
   window.faceRig = { play: play, get targets() { return names.slice(); },
     set: function (o) { enterManual(); for (var k in o) M.w[k] = o[k]; applyManual(); } };
 
-  // ==== corpo inteiro procedural ====
+  // ==== corpo inteiro procedural & esqueleto nativo (GLB Armature) ====
   var EU = new THREE.Euler();
   function eul(x, y, z) { return new THREE.Quaternion().setFromEuler(EU.set(x, y, z)); }
   function rotT(node, times, es) {
@@ -5209,129 +5387,1280 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
     return new THREE.VectorKeyframeTrack(node + '.' + prop, times, v);
   }
 
+  var detectedBones = [];
+  var skeletonRig = null;
+  var skeletonHelper = null;
+  var boneSliders = {};
+  var manualBoneState = {
+    spinePitch: 0, spineYaw: 0, spineRoll: 0,
+    headPitch: 0, headYaw: 0, headRoll: 0,
+    armLPitch: 0, armLYaw: 0, armLRoll: 0,
+    armRPitch: 0, armRYaw: 0, armRRoll: 0,
+    forearmL: 0, forearmR: 0,
+    legLPitch: 0, legRPitch: 0,
+    shinL: 0, shinR: 0
+  };
+
+  function scanSkeleton(modelRoot) {
+    detectedBones = [];
+    skeletonRig = null;
+    if (!modelRoot) return null;
+
+    modelRoot.traverse(function (o) {
+      if (o.isBone) {
+        if (!o.name) o.name = 'Bone_' + detectedBones.length;
+        detectedBones.push(o);
+        if (!o.userData) o.userData = {};
+        if (!o.userData.restQuaternion) o.userData.restQuaternion = o.quaternion.clone();
+        if (!o.userData.restPosition) o.userData.restPosition = o.position.clone();
+        if (!o.userData.restScale) o.userData.restScale = o.scale.clone();
+      }
+    });
+
+    if (detectedBones.length === 0) return null;
+
+    function matchBone(regexList) {
+      for (var r = 0; r < regexList.length; r++) {
+        var rx = regexList[r];
+        for (var i = 0; i < detectedBones.length; i++) {
+          var bn = detectedBones[i];
+          if (rx.test(bn.name)) return bn;
+        }
+      }
+      return null;
+    }
+
+    skeletonRig = {
+      hips: matchBone([
+        /^(hips|pelvis|b_pelvis|bip01_pelvis|c_root|quadril|bacia|root)$/i,
+        /hips|pelvis|quadril|bacia/i
+      ]),
+      spine: matchBone([
+        /^(spine|spine1|spine_01|abdomen|torso|coluna|coluna1)$/i,
+        /spine1|spine_01|abdomen|coluna1/i,
+        /spine|coluna/i
+      ]),
+      chest: matchBone([
+        /^(chest|spine2|spine3|spine_02|spine_03|upper.*body|torax|tórax|peito)$/i,
+        /chest|spine2|spine3|torax|peito/i
+      ]),
+      neck: matchBone([
+        /neck|pescoço|pescoco/i
+      ]),
+      head: matchBone([
+        /head|cabeça|cabeca/i
+      ]),
+      shoulderL: matchBone([
+        /(shoulder|clavicle|clavicula).*(l|left|_l|\.l)|(l|left|_l|\.l).*(shoulder|clavicle|clavicula)|ombro.*(e|esq)/i
+      ]),
+      shoulderR: matchBone([
+        /(shoulder|clavicle|clavicula).*(r|right|_r|\.r)|(r|right|_r|\.r).*(shoulder|clavicle|clavicula)|ombro.*(d|dir)/i
+      ]),
+      armL: matchBone([
+        /(upper.*arm|arm).*(l|left|_l|\.l)|(l|left|_l|\.l).*(upper.*arm|arm)|(braço|braco).*(e|esq)|bicep.*(l|left|_l|\.l)/i
+      ]),
+      armR: matchBone([
+        /(upper.*arm|arm).*(r|right|_r|\.r)|(r|right|_r|\.r).*(upper.*arm|arm)|(braço|braco).*(d|dir)|bicep.*(r|right|_r|\.r)/i
+      ]),
+      forearmL: matchBone([
+        /(fore.*arm|lower.*arm).*(l|left|_l|\.l)|(l|left|_l|\.l).*(fore.*arm|lower.*arm)|(antebraço|antebraco).*(e|esq)/i
+      ]),
+      forearmR: matchBone([
+        /(fore.*arm|lower.*arm).*(r|right|_r|\.r)|(r|right|_r|\.r).*(fore.*arm|lower.*arm)|(antebraço|antebraco).*(d|dir)/i
+      ]),
+      handL: matchBone([
+        /(hand|wrist).*(l|left|_l|\.l)|(l|left|_l|\.l).*(hand|wrist)|(mão|mao).*(e|esq)/i
+      ]),
+      handR: matchBone([
+        /(hand|wrist).*(r|right|_r|\.r)|(r|right|_r|\.r).*(hand|wrist)|(mão|mao).*(d|dir)/i
+      ]),
+      legL: matchBone([
+        /(thigh|upper.*leg|up.*leg).*(l|left|_l|\.l)|(l|left|_l|\.l).*(thigh|upper.*leg|up.*leg)|coxa.*(e|esq)/i
+      ]),
+      legR: matchBone([
+        /(thigh|upper.*leg|up.*leg).*(r|right|_r|\.r)|(r|right|_r|\.r).*(thigh|upper.*leg|up.*leg)|coxa.*(d|dir)/i
+      ]),
+      shinL: matchBone([
+        /(shin|calf|lower.*leg).*(l|left|_l|\.l)|(l|left|_l|\.l).*(shin|calf|lower.*leg)|leg.*(l|left|_l|\.l)|(canela|joelho).*(e|esq)/i
+      ]),
+      shinR: matchBone([
+        /(shin|calf|lower.*leg).*(r|right|_r|\.r)|(r|right|_r|\.r).*(shin|calf|lower.*leg)|leg.*(r|right|_r|\.r)|(canela|joelho).*(d|dir)/i
+      ]),
+      footL: matchBone([
+        /(foot|ankle).*(l|left|_l|\.l)|(l|left|_l|\.l).*(foot|ankle)|(pé|pe).*(e|esq)/i
+      ]),
+      footR: matchBone([
+        /(foot|ankle).*(r|right|_r|\.r)|(r|right|_r|\.r).*(foot|ankle)|(pé|pe).*(d|dir)/i
+      ])
+    };
+
+    if (!skeletonRig.chest && skeletonRig.spine) skeletonRig.chest = skeletonRig.spine;
+    return skeletonRig;
+  }
+
+  function boneRotT(bone, times, deltaEulers) {
+    if (!bone) return null;
+    var restQ = (bone.userData && bone.userData.restQuaternion) ? bone.userData.restQuaternion : bone.quaternion.clone();
+    var v = [];
+    var tmpE = new THREE.Euler();
+    var deltaQ = new THREE.Quaternion();
+    var finalQ = new THREE.Quaternion();
+    deltaEulers.forEach(function (e) {
+      tmpE.set(e[0], e[1], e[2], 'YXZ');
+      deltaQ.setFromEuler(tmpE);
+      finalQ.copy(restQ).multiply(deltaQ);
+      v.push(finalQ.x, finalQ.y, finalQ.z, finalQ.w);
+    });
+    return new THREE.QuaternionKeyframeTrack(bone.name + '.quaternion', times, v);
+  }
+
+  function bonePosT(bone, times, deltaPositions) {
+    if (!bone) return null;
+    var restP = (bone.userData && bone.userData.restPosition) ? bone.userData.restPosition : bone.position.clone();
+    var v = [];
+    deltaPositions.forEach(function (p) {
+      v.push(restP.x + p[0], restP.y + p[1], restP.z + p[2]);
+    });
+    return new THREE.VectorKeyframeTrack(bone.name + '.position', times, v);
+  }
+
+  function safeTracks(trackList) {
+    return trackList.filter(function (t) { return t !== null && t !== undefined; });
+  }
+
+  function updateSkeletonHelper() {
+    if (skeletonHelper) {
+      scene.remove(skeletonHelper);
+      skeletonHelper.dispose && skeletonHelper.dispose();
+      skeletonHelper = null;
+    }
+    var chk = document.getElementById('chk-show-skeleton');
+    if (chk && chk.checked && root && detectedBones.length > 0) {
+      skeletonHelper = new THREE.SkeletonHelper(root);
+      if (skeletonHelper.material) {
+        skeletonHelper.material.linewidth = 2;
+        skeletonHelper.material.depthTest = false;
+        skeletonHelper.material.transparent = true;
+      }
+      scene.add(skeletonHelper);
+    }
+  }
+
+  function applyManualBonePose() {
+    if (!skeletonRig) return;
+    var tmpE = new THREE.Euler();
+    var deltaQ = new THREE.Quaternion();
+
+    function setBoneDelta(bone, pitch, yaw, roll) {
+      if (!bone) return;
+      var restQ = (bone.userData && bone.userData.restQuaternion) ? bone.userData.restQuaternion : bone.quaternion;
+      tmpE.set(pitch || 0, yaw || 0, roll || 0, 'YXZ');
+      deltaQ.setFromEuler(tmpE);
+      bone.quaternion.copy(restQ).multiply(deltaQ);
+    }
+
+    if (skeletonRig.spine) setBoneDelta(skeletonRig.spine, manualBoneState.spinePitch, manualBoneState.spineYaw, manualBoneState.spineRoll);
+    if (skeletonRig.chest && skeletonRig.chest !== skeletonRig.spine) setBoneDelta(skeletonRig.chest, manualBoneState.spinePitch * 0.5, manualBoneState.spineYaw * 0.5, 0);
+    if (skeletonRig.head) setBoneDelta(skeletonRig.head, manualBoneState.headPitch, manualBoneState.headYaw, manualBoneState.headRoll);
+    if (skeletonRig.armL) setBoneDelta(skeletonRig.armL, manualBoneState.armLPitch, manualBoneState.armLYaw, manualBoneState.armLRoll);
+    if (skeletonRig.armR) setBoneDelta(skeletonRig.armR, manualBoneState.armRPitch, manualBoneState.armRYaw, manualBoneState.armRRoll);
+    if (skeletonRig.forearmL) setBoneDelta(skeletonRig.forearmL, manualBoneState.forearmL, 0, 0);
+    if (skeletonRig.forearmR) setBoneDelta(skeletonRig.forearmR, manualBoneState.forearmR, 0, 0);
+    if (skeletonRig.legL) setBoneDelta(skeletonRig.legL, manualBoneState.legLPitch, 0, 0);
+    if (skeletonRig.legR) setBoneDelta(skeletonRig.legR, manualBoneState.legRPitch, 0, 0);
+    if (skeletonRig.shinL) setBoneDelta(skeletonRig.shinL, manualBoneState.shinL, 0, 0);
+    if (skeletonRig.shinR) setBoneDelta(skeletonRig.shinR, manualBoneState.shinR, 0, 0);
+  }
+
+  function resetBonesToNeutral() {
+    for (var k in manualBoneState) manualBoneState[k] = 0;
+    for (var sk in boneSliders) {
+      if (boneSliders[sk]) {
+        boneSliders[sk].input.value = 0;
+        boneSliders[sk].out.textContent = '0.00';
+      }
+    }
+    if (detectedBones.length) {
+      detectedBones.forEach(function (b) {
+        if (b.userData && b.userData.restQuaternion) b.quaternion.copy(b.userData.restQuaternion);
+        if (b.userData && b.userData.restPosition) b.position.copy(b.userData.restPosition);
+      });
+    }
+  }
+
+  function buildSkeletonControls() {
+    var host = document.getElementById('ctls-skeleton');
+    if (!host) return;
+    host.innerHTML = '';
+    boneSliders = {};
+
+    if (!skeletonRig || detectedBones.length === 0) {
+      var p = document.createElement('p');
+      p.className = 'hint';
+      p.style.margin = '8px 0';
+      p.textContent = 'Este modelo não possui um esqueleto 3D (armature) interno com ossos mapeáveis.';
+      host.appendChild(p);
+      return;
+    }
+
+    function addBoneSlider(group, label, stateKey, min, max, step) {
+      var row = document.createElement('div');
+      row.className = 'ctl-row';
+      var lbl = document.createElement('label');
+      lbl.textContent = label;
+      var out = document.createElement('output');
+      out.textContent = '0.00';
+      var inp = document.createElement('input');
+      inp.type = 'range';
+      inp.min = min !== undefined ? min : -1.5;
+      inp.max = max !== undefined ? max : 1.5;
+      inp.step = step !== undefined ? step : 0.02;
+      inp.value = 0;
+
+      inp.addEventListener('input', function () {
+        enterManual();
+        manualBoneState[stateKey] = parseFloat(inp.value);
+        out.textContent = manualBoneState[stateKey].toFixed(2);
+        applyManualBonePose();
+      });
+
+      row.appendChild(lbl);
+      row.appendChild(inp);
+      row.appendChild(out);
+      group.appendChild(row);
+      boneSliders[stateKey] = { input: inp, out: out };
+    }
+
+    function addGroup(title) {
+      var d = document.createElement('div');
+      var h = document.createElement('div');
+      h.className = 'bone-group-header';
+      h.textContent = title;
+      d.appendChild(h);
+      host.appendChild(d);
+      return d;
+    }
+
+    var gTronco = addGroup('Tronco & Cabeça');
+    if (skeletonRig.spine || skeletonRig.chest) {
+      addBoneSlider(gTronco, 'Coluna (Inclinar)', 'spinePitch', -0.8, 0.8);
+      addBoneSlider(gTronco, 'Coluna (Girar)', 'spineYaw', -0.8, 0.8);
+      addBoneSlider(gTronco, 'Coluna (Lateral)', 'spineRoll', -0.6, 0.6);
+    }
+    if (skeletonRig.head || skeletonRig.neck) {
+      addBoneSlider(gTronco, 'Cabeça (Sim/Não)', 'headPitch', -0.8, 0.8);
+      addBoneSlider(gTronco, 'Cabeça (Girar)', 'headYaw', -1.2, 1.2);
+      addBoneSlider(gTronco, 'Cabeça (Inclinar)', 'headRoll', -0.6, 0.6);
+    }
+
+    var gArmL = addGroup('Braço Esquerdo');
+    if (skeletonRig.armL) {
+      addBoneSlider(gArmL, 'Elevação Frente', 'armLPitch', -2.0, 1.5);
+      addBoneSlider(gArmL, 'Abertura Lateral', 'armLRoll', -1.5, 1.5);
+      addBoneSlider(gArmL, 'Rotação', 'armLYaw', -1.2, 1.2);
+    }
+    if (skeletonRig.forearmL) {
+      addBoneSlider(gArmL, 'Cotovelo (Dobrar)', 'forearmL', -2.2, 0.2);
+    }
+
+    var gArmR = addGroup('Braço Direito');
+    if (skeletonRig.armR) {
+      addBoneSlider(gArmR, 'Elevação Frente', 'armRPitch', -2.0, 1.5);
+      addBoneSlider(gArmR, 'Abertura Lateral', 'armRRoll', -1.5, 1.5);
+      addBoneSlider(gArmR, 'Rotação', 'armRYaw', -1.2, 1.2);
+    }
+    if (skeletonRig.forearmR) {
+      addBoneSlider(gArmR, 'Cotovelo (Dobrar)', 'forearmR', -2.2, 0.2);
+    }
+
+    var gPernas = addGroup('Pernas & Joelhos');
+    if (skeletonRig.legL) {
+      addBoneSlider(gPernas, 'Perna E (Avanço)', 'legLPitch', -1.5, 1.0);
+    }
+    if (skeletonRig.shinL) {
+      addBoneSlider(gPernas, 'Joelho E (Dobrar)', 'shinL', 0, 2.0);
+    }
+    if (skeletonRig.legR) {
+      addBoneSlider(gPernas, 'Perna D (Avanço)', 'legRPitch', -1.5, 1.0);
+    }
+    if (skeletonRig.shinR) {
+      addBoneSlider(gPernas, 'Joelho D (Dobrar)', 'shinR', 0, 2.0);
+    }
+
+    var btnResetBones = document.createElement('button');
+    btnResetBones.type = 'button';
+    btnResetBones.className = 'bone-reset-btn';
+    btnResetBones.textContent = '↺ Resetar Pose dos Ossos';
+    btnResetBones.addEventListener('click', resetBonesToNeutral);
+    host.appendChild(btnResetBones);
+  }
+
+  function findHeadNode(modelRoot) {
+    if (!modelRoot) return null;
+    var found = modelRoot.getObjectByName('Head') || modelRoot.getObjectByName('head') || modelRoot.getObjectByName('mixamorig:Head');
+    if (found) return found;
+    modelRoot.traverse(function (o) {
+      if (!found && /head|cabeça|cabeca|face|rosto/i.test(o.name)) found = o;
+    });
+    return found || modelRoot;
+  }
+
+  function removeExistingBody() {
+    var oldBob = root ? root.getObjectByName('B_Bob') : null;
+    if (oldBob) {
+      if (head && head.parent === oldBob) {
+        root.attach(head);
+      }
+      root.remove(oldBob);
+    }
+    var oldShadow = root ? root.getObjectByName('B_Shadow') : null;
+    if (oldShadow) root.remove(oldShadow);
+  }
+
   function buildBody() {
-    var ca = faceMeshes[0].geometry.attributes.color;
+    removeExistingBody();
+    var chk = document.getElementById('chk-procedural-body');
+    if (chk && !chk.checked) return;
+    if (!head || !faceMeshes.length) return;
+
+    var ca = (faceMeshes[0].geometry && faceMeshes[0].geometry.attributes) ? faceMeshes[0].geometry.attributes.color : null;
     var skinC = new THREE.Color(0.5, 0.33, 0.25);
-    if (ca && ca.count) {  // tom de pele médio do próprio rosto
+    if (ca && ca.count) {
       skinC.setRGB(0, 0, 0); var n = 0;
       for (var i = 0; i < ca.count; i += 5) {
         skinC.r += Math.max(0, ca.getX(i)); skinC.g += Math.max(0, ca.getY(i)); skinC.b += Math.max(0, ca.getZ(i)); n++;
       }
-      skinC.multiplyScalar(1 / n);
+      skinC.multiplyScalar(1 / Math.max(1, n));
+    } else if (faceMeshes[0].material && faceMeshes[0].material.color) {
+      skinC.copy(faceMeshes[0].material.color);
     }
+
+    var headBox = new THREE.Box3().setFromObject(head);
+    var headSize = headBox.getSize(new THREE.Vector3());
+    var refHeadH = headSize.y > 0.05 ? headSize.y : 0.6;
+    var scale = refHeadH / 0.65;
+    var headBottom = headBox.min.y;
+
     var skin = new THREE.MeshStandardMaterial({ color: skinC, roughness: 0.6 });
     var shirt = new THREE.MeshStandardMaterial({ color: 0xa34a35, roughness: 0.85 });
     var pants = new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.85 });
     var shoes = new THREE.MeshStandardMaterial({ color: 0x26262b, roughness: 0.7 });
+
     function node(parent, name, x, y, z) { var g = new THREE.Object3D(); g.name = name; g.position.set(x, y, z); parent.add(g); return g; }
     function part(parent, geo, mat, x, y, z) { var m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; }
 
     var bob = node(root, 'B_Bob', 0, 0, 0);
-    bob.attach(head);                                                     // cabeça e corpo se movem juntos
-    part(bob, new THREE.CylinderGeometry(0.08, 0.105, 0.34, 14), skin, 0, -0.645, -0.12);  // pescoço
-    var torso = node(bob, 'B_Torso', 0, -0.82, -0.12);
-    part(torso, new THREE.CapsuleGeometry(0.23, 0.42, 6, 16), shirt, 0, -0.45, 0);        // tórax
-    part(torso, new THREE.CapsuleGeometry(0.19, 0.14, 6, 16), pants, 0, -0.86, 0);        // quadril
-    part(torso, new THREE.SphereGeometry(0.11, 14, 12), shirt, 0.30, -0.10, 0);           // ombro E
-    part(torso, new THREE.SphereGeometry(0.11, 14, 12), shirt, -0.30, -0.10, 0);         // ombro D
+    bob.attach(head);
+
+    var neckY = (headBottom < -0.1 ? headBottom : -0.645) * scale;
+    part(bob, new THREE.CylinderGeometry(0.08 * scale, 0.105 * scale, 0.34 * scale, 14), skin, 0, neckY, -0.12 * scale);
+    var torso = node(bob, 'B_Torso', 0, neckY - 0.18 * scale, -0.12 * scale);
+    part(torso, new THREE.CapsuleGeometry(0.23 * scale, 0.42 * scale, 6, 16), shirt, 0, -0.45 * scale, 0);
+    part(torso, new THREE.CapsuleGeometry(0.19 * scale, 0.14 * scale, 6, 16), pants, 0, -0.86 * scale, 0);
+    part(torso, new THREE.SphereGeometry(0.11 * scale, 14, 12), shirt, 0.30 * scale, -0.10 * scale, 0);
+    part(torso, new THREE.SphereGeometry(0.11 * scale, 14, 12), shirt, -0.30 * scale, -0.10 * scale, 0);
     [-1, 1].forEach(function (s) {
       var L = s < 0 ? 'L' : 'R';
-      var arm = node(torso, 'B_Arm' + L, 0.34 * s, -0.10, 0);
-      part(arm, new THREE.CapsuleGeometry(0.08, 0.32, 5, 12), shirt, 0, -0.26, 0);        // braço
-      var fore = node(arm, 'B_Forearm' + L, 0, -0.50, 0);
-      part(fore, new THREE.CapsuleGeometry(0.068, 0.28, 5, 12), skin, 0, -0.22, 0);       // antebraço
-      part(fore, new THREE.SphereGeometry(0.088, 14, 12), skin, 0, -0.50, 0.02);         // mão
+      var arm = node(torso, 'B_Arm' + L, 0.34 * s * scale, -0.10 * scale, 0);
+      part(arm, new THREE.CapsuleGeometry(0.08 * scale, 0.32 * scale, 5, 12), shirt, 0, -0.26 * scale, 0);
+      var fore = node(arm, 'B_Forearm' + L, 0, -0.50 * scale, 0);
+      part(fore, new THREE.CapsuleGeometry(0.068 * scale, 0.28 * scale, 5, 12), skin, 0, -0.22 * scale, 0);
+      part(fore, new THREE.SphereGeometry(0.088 * scale, 14, 12), skin, 0, -0.50 * scale, 0.02 * scale);
     });
     [-1, 1].forEach(function (s) {
       var L = s < 0 ? 'L' : 'R';
-      var leg = node(bob, 'B_Leg' + L, 0.17 * s, -1.95, -0.15);
-      part(leg, new THREE.CapsuleGeometry(0.12, 0.40, 5, 14), pants, 0, -0.34, 0);        // coxa
-      var shin = node(leg, 'B_Shin' + L, 0, -0.64, 0.02);
-      part(shin, new THREE.CapsuleGeometry(0.10, 0.40, 5, 14), pants, 0, -0.36, 0);      // canela
-      part(shin, new THREE.BoxGeometry(0.17, 0.09, 0.38), shoes, 0, -0.70, 0.10);         // pé
+      var leg = node(bob, 'B_Leg' + L, 0.17 * s * scale, (neckY - 1.30 * scale), -0.15 * scale);
+      part(leg, new THREE.CapsuleGeometry(0.12 * scale, 0.40 * scale, 5, 14), pants, 0, -0.34 * scale, 0);
+      var shin = node(leg, 'B_Shin' + L, 0, -0.64 * scale, 0.02 * scale);
+      part(shin, new THREE.CapsuleGeometry(0.10 * scale, 0.40 * scale, 5, 14), pants, 0, -0.36 * scale, 0);
+      part(shin, new THREE.BoxGeometry(0.17 * scale, 0.09 * scale, 0.38 * scale), shoes, 0, -0.70 * scale, 0.10 * scale);
     });
-    var shadow = part(root, new THREE.CircleGeometry(0.55, 32).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16 }), 0, -3.36, -0.05);
+    var shadowY = neckY - 2.7 * scale;
+    var shadow = part(root, new THREE.CircleGeometry(0.55 * scale, 32).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16 }), 0, shadowY, -0.05 * scale);
     shadow.name = 'B_Shadow';
   }
 
-  function registerBodyClips() {
-    var T, a;
-    // ---- Correr: um ciclo de passada, no lugar ----
-    T = [0, 0.18, 0.36, 0.54, 0.72];
-    var run = new THREE.AnimationClip('Run', 0.72, [
-      vecT('B_Bob', 'position', T, [[0,0,0],[0,-0.08,0],[0,0,0],[0,-0.08,0],[0,0,0]]),
-      rotT('B_LegL', T, [[-0.95,0,0],[-0.10,0,0],[0.75,0,0],[-0.10,0,0],[-0.95,0,0]]),
-      rotT('B_ShinL', T, [[0.5,0,0],[1.2,0,0],[0.3,0,0],[1.2,0,0],[0.5,0,0]]),
-      rotT('B_LegR', T, [[0.75,0,0],[-0.10,0,0],[-0.95,0,0],[-0.10,0,0],[0.75,0,0]]),
-      rotT('B_ShinR', T, [[0.3,0,0],[1.2,0,0],[0.5,0,0],[1.2,0,0],[0.3,0,0]]),
-      rotT('B_ArmL', T, [[0.8,0,0.10],[0,0,0.10],[-0.7,0,0.10],[0,0,0.10],[0.8,0,0.10]]),
-      rotT('B_ArmR', T, [[-0.7,0,-0.10],[0,0,-0.10],[0.8,0,-0.10],[0,0,-0.10],[-0.7,0,-0.10]]),
-      rotT('B_ForearmL', T, [[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0]]),
-      rotT('B_ForearmR', T, [[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0]]),
-      rotT('B_Torso', T, [[-0.14,0.05,0],[-0.14,0,0],[-0.14,-0.05,0],[-0.14,0,0],[-0.14,0.05,0]])
-    ]);
-    a = mixer.clipAction(run); a.setLoop(THREE.LoopRepeat, Infinity); actions.Run = a;
-
-    // ---- Pular: agachar, impulsionar, apex, aterrissar ----
-    T = [0, 0.28, 0.5, 0.75, 1.0, 1.25, 1.5];
-    var jump = new THREE.AnimationClip('Jump', 1.5, [
-      vecT('B_Bob', 'position', T, [[0,0,0],[0,-0.12,0],[0,0.5,0],[0,0.8,0],[0,-0.10,0],[0,-0.03,0],[0,0,0]]),
-      vecT('B_Shadow', 'scale', T, [[1,1,1],[1.10,1,1.10],[0.75,1,0.75],[0.55,1,0.55],[1.05,1,1.05],[1,1,1],[1,1,1]]),
-      rotT('B_LegL', T, [[0,0,0],[-0.55,0,0],[-0.25,0,0],[-0.75,0,0],[-0.9,0,0],[-0.25,0,0],[0,0,0]]),
-      rotT('B_LegR', T, [[0,0,0],[-0.55,0,0],[-0.25,0,0],[-0.75,0,0],[-0.9,0,0],[-0.25,0,0],[0,0,0]]),
-      rotT('B_ShinL', T, [[0,0,0],[0.95,0,0],[0.15,0,0],[1.05,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
-      rotT('B_ShinR', T, [[0,0,0],[0.95,0,0],[0.15,0,0],[1.05,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
-      rotT('B_Torso', T, [[0,0,0],[-0.28,0,0],[0.06,0,0],[0.10,0,0],[-0.24,0,0],[-0.06,0,0],[0,0,0]]),
-      rotT('B_ArmL', T, [[0,0,0],[0.55,0,0.12],[-1.9,0,-0.30],[-2.35,0,-0.45],[-0.5,0,-0.10],[-0.15,0,0],[0,0,0]]),
-      rotT('B_ArmR', T, [[0,0,0],[0.55,0,-0.12],[-1.9,0,0.30],[-2.35,0,0.45],[-0.5,0,0.10],[-0.15,0,0],[0,0,0]]),
-      rotT('B_ForearmL', T, [[0,0,0],[-0.35,0,0],[-0.10,0,0],[-0.10,0,0],[-0.50,0,0],[-0.10,0,0],[0,0,0]]),
-      rotT('B_ForearmR', T, [[0,0,0],[-0.35,0,0],[-0.10,0,0],[-0.10,0,0],[-0.50,0,0],[-0.10,0,0],[0,0,0]])
-    ]);
-    a = mixer.clipAction(jump); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Jump = a;
-
-    // ---- Acenar: levanta o braço direito e acena ----
-    var WT = [0, 0.3, 2.05, 2.5, 2.8];
-    var FT = [0, 0.3, 0.55, 0.8, 1.05, 1.3, 1.55, 1.8, 2.05, 2.5, 2.8];
-    var wave = new THREE.AnimationClip('Wave', 2.8, [
-      rotT('B_ArmR', WT, [[0,0,0],[0,0,-2.35],[0,0,-2.35],[0,0,0],[0,0,0]]),
-      rotT('B_ForearmR', FT, [[0,0,0],[0,0,-0.35],[0,0,0.55],[0,0,-0.55],[0,0,0.55],[0,0,-0.55],[0,0,0.55],[0,0,-0.35],[0,0,0],[0,0,0],[0,0,0]]),
-      rotT('B_Torso', WT, [[0,0,0],[0.04,0,-0.06],[0.04,0,-0.06],[0,0,0],[0,0,0]]),
-      rotT('Head', WT, [[0,0,0],[0,0,-0.12],[0,0,-0.12],[0,0,0],[0,0,0]])
-    ]);
-    a = mixer.clipAction(wave); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Wave = a;
+  function getMorphMap() {
+    function find(regex) {
+      var res = [];
+      names.forEach(function (n) { if (regex.test(n)) res.push(n); });
+      return res;
+    }
+    return {
+      smile: find(/smile|sorri|mouthsmile|alegr/i),
+      smileL: find(/smile.*l|mouthsmileleft/i),
+      smileR: find(/smile.*r|mouthsmileright/i),
+      frown: find(/frown|sad|trist|mouthfrown|down/i),
+      jawOpen: find(/jawopen|mouthopen|open|abrir|boca/i),
+      blink: find(/blink|piscar|eye.*close|eyes_closed/i),
+      blinkL: find(/blink.*l|eyeblinkleft/i),
+      blinkR: find(/blink.*r|eyeblinkright/i),
+      browUp: find(/brow.*up|sobrancelha.*cima|browinnerup/i),
+      browDown: find(/brow.*down|sobrancelha.*baixo|angry|bravo/i),
+      cheek: find(/cheek|bochecha/i)
+    };
   }
 
-  new THREE.GLTFLoader().parse(bytes.buffer, '', function (gltf) {
-    root = gltf.scene; scene.add(root);
-    root.traverse(function (o) { if (o.isMesh && o.morphTargetInfluences && o.morphTargetInfluences.length) faceMeshes.push(o); });
-    dict = faceMeshes[0].morphTargetDictionary;
-    names = Object.keys(dict).sort(function (a, b) { return dict[a] - dict[b]; });
-    head = root.getObjectByName('Head'); eyeL = root.getObjectByName('Eye_L'); eyeR = root.getObjectByName('Eye_R');
-    lids = { upL: root.getObjectByName('LidUp_L'), loL: root.getObjectByName('LidLo_L'),
-             upR: root.getObjectByName('LidUp_R'), loR: root.getObjectByName('LidLo_R') };
-    mixer = new THREE.AnimationMixer(root);
-    gltf.animations.forEach(function (c) {
-      var a = mixer.clipAction(c);
-      if (c.name === 'Idle') { a.setLoop(THREE.LoopRepeat, Infinity); }
-      else { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
-      actions[c.name] = a;
+  function createMorphTracks(targetNames, times, values) {
+    var tracks = [];
+    if (!targetNames || !targetNames.length) return tracks;
+    targetNames.forEach(function (tName) {
+      faceMeshes.forEach(function (mesh, mIdx) {
+        if (!mesh.name) mesh.name = 'FaceMesh_' + mIdx;
+        if (mesh.morphTargetDictionary && mesh.morphTargetDictionary[tName] !== undefined) {
+          var idx = mesh.morphTargetDictionary[tName];
+          tracks.push(new THREE.NumberKeyframeTrack(
+            mesh.name + '.morphTargetInfluences[' + idx + ']',
+            times,
+            values
+          ));
+        }
+      });
     });
-    mixer.addEventListener('finished', function (e) { if (e.action !== actions.Idle) play('Idle'); });
-    buildBody();
-    registerBodyClips();
-    buildControls();
-    document.querySelectorAll('button[data-clip]').forEach(function (b) {
-      b.addEventListener('click', function () { play(b.getAttribute('data-clip')); });
+    return tracks;
+  }
+
+  function registerUniversalClips() {
+    var T, a;
+    var mMap = getMorphMap();
+    var headNode = head ? head.name : 'Head';
+    var hasSkeleton = skeletonRig && detectedBones.length > 0;
+
+    // 1. Idle universal (respirar & piscar procedural, sincronizado ao esqueleto quando disponível)
+    if (!actions.Idle) {
+      var idleTracks = [];
+      if (hasSkeleton) {
+        if (skeletonRig.spine) idleTracks.push(boneRotT(skeletonRig.spine, [0, 1.8, 3.6], [[0,0,0], [0.035,0,0], [0,0,0]]));
+        if (skeletonRig.chest && skeletonRig.chest !== skeletonRig.spine) idleTracks.push(boneRotT(skeletonRig.chest, [0, 1.8, 3.6], [[0,0,0], [0.02,0,0], [0,0,0]]));
+        if (skeletonRig.head) idleTracks.push(boneRotT(skeletonRig.head, [0, 1.8, 3.6], [[0,0,0], [-0.02,0.015,0], [0,0,0]]));
+        if (skeletonRig.armL) idleTracks.push(boneRotT(skeletonRig.armL, [0, 1.8, 3.6], [[0,0,0], [0.015,0,-0.02], [0,0,0]]));
+        if (skeletonRig.armR) idleTracks.push(boneRotT(skeletonRig.armR, [0, 1.8, 3.6], [[0,0,0], [0.015,0,0.02], [0,0,0]]));
+      } else {
+        idleTracks.push(rotT(headNode, [0, 1.8, 3.6], [[0,0,0],[0.035,0,0],[0,0,0]]));
+      }
+      var blinkTargets = mMap.blink.length ? mMap.blink : (mMap.blinkL.length ? mMap.blinkL.concat(mMap.blinkR) : []);
+      if (blinkTargets.length) {
+        idleTracks = idleTracks.concat(createMorphTracks(blinkTargets, [0, 1.1, 1.2, 1.3, 2.5, 2.6, 2.7, 3.6], [0, 0, 1.0, 0, 0, 1.0, 0, 0]));
+      }
+      if (mMap.smile.length) {
+        idleTracks = idleTracks.concat(createMorphTracks(mMap.smile, [0, 1.5, 2.2, 3.6], [0, 0.08, 0, 0]));
+      }
+      var idleClip = new THREE.AnimationClip('Idle', 3.6, safeTracks(idleTracks));
+      a = mixer.clipAction(idleClip);
+      a.setLoop(THREE.LoopRepeat, Infinity);
+      actions.Idle = a;
+    }
+
+    // 2. Animações corporais com o esqueleto nativo (GLB Armature)
+    if (hasSkeleton) {
+      // Walk (Caminhada com ossos reais)
+      if (!actions.Walk) {
+        T = [0, 0.25, 0.5, 0.75, 1.0];
+        var walkTracks = safeTracks([
+          boneRotT(skeletonRig.hips, T, [[0,0,0],[0,0.06,0],[0,0,0],[0,-0.06,0],[0,0,0]]),
+          bonePosT(skeletonRig.hips, T, [[0,0,0],[0,0.025,0],[0,0,0],[0,0.025,0],[0,0,0]]),
+          boneRotT(skeletonRig.spine, T, [[0,0,0],[0,-0.06,0],[0,0,0],[0,0.06,0],[0,0,0]]),
+          boneRotT(skeletonRig.legL, T, [[-0.45,0,0],[0,0,0],[0.40,0,0],[0,0,0],[-0.45,0,0]]),
+          boneRotT(skeletonRig.legR, T, [[0.40,0,0],[0,0,0],[-0.45,0,0],[0,0,0],[0.40,0,0]]),
+          boneRotT(skeletonRig.shinL, T, [[0.15,0,0],[0.60,0,0],[0.05,0,0],[0.10,0,0],[0.15,0,0]]),
+          boneRotT(skeletonRig.shinR, T, [[0.05,0,0],[0.10,0,0],[0.15,0,0],[0.60,0,0],[0.05,0,0]]),
+          boneRotT(skeletonRig.armL, T, [[0.35,0,0.05],[0,0,0.05],[-0.30,0,0.05],[0,0,0.05],[0.35,0,0.05]]),
+          boneRotT(skeletonRig.armR, T, [[-0.30,0,-0.05],[0,0,-0.05],[0.35,0,-0.05],[0,0,-0.05],[-0.30,0,-0.05]]),
+          boneRotT(skeletonRig.forearmL, T, [[-0.25,0,0],[-0.25,0,0],[-0.25,0,0],[-0.25,0,0],[-0.25,0,0]]),
+          boneRotT(skeletonRig.forearmR, T, [[-0.25,0,0],[-0.25,0,0],[-0.25,0,0],[-0.25,0,0],[-0.25,0,0]]),
+          boneRotT(skeletonRig.head, T, [[0,0,0],[0,-0.02,0],[0,0,0],[0,0.02,0],[0,0,0]])
+        ]);
+        var walkClip = new THREE.AnimationClip('Walk', 1.0, walkTracks);
+        a = mixer.clipAction(walkClip); a.setLoop(THREE.LoopRepeat, Infinity); actions.Walk = a;
+      }
+
+      // Run (Corrida com esqueleto nativo)
+      if (!actions.Run) {
+        T = [0, 0.17, 0.34, 0.51, 0.68];
+        var runTracks = safeTracks([
+          boneRotT(skeletonRig.hips, T, [[0,0,0],[0,0.08,0],[0,0,0],[0,-0.08,0],[0,0,0]]),
+          bonePosT(skeletonRig.hips, T, [[0,0,0],[0,0.04,0],[0,0,0],[0,0.04,0],[0,0,0]]),
+          boneRotT(skeletonRig.spine, T, [[-0.22,0,0],[-0.22,-0.08,0],[-0.22,0,0],[-0.22,0.08,0],[-0.22,0,0]]),
+          boneRotT(skeletonRig.legL, T, [[-0.85,0,0],[0,0,0],[0.70,0,0],[0,0,0],[-0.85,0,0]]),
+          boneRotT(skeletonRig.legR, T, [[0.70,0,0],[0,0,0],[-0.85,0,0],[0,0,0],[0.70,0,0]]),
+          boneRotT(skeletonRig.shinL, T, [[0.35,0,0],[1.20,0,0],[0.20,0,0],[0.45,0,0],[0.35,0,0]]),
+          boneRotT(skeletonRig.shinR, T, [[0.20,0,0],[0.45,0,0],[0.35,0,0],[1.20,0,0],[0.20,0,0]]),
+          boneRotT(skeletonRig.armL, T, [[0.80,0,0.1],[0,0,0.1],[-0.75,0,0.1],[0,0,0.1],[0.80,0,0.1]]),
+          boneRotT(skeletonRig.armR, T, [[-0.75,0,-0.1],[0,0,-0.1],[0.80,0,-0.1],[0,0,-0.1],[-0.75,0,-0.1]]),
+          boneRotT(skeletonRig.forearmL, T, [[-1.1,0,0],[-1.1,0,0],[-1.1,0,0],[-1.1,0,0],[-1.1,0,0]]),
+          boneRotT(skeletonRig.forearmR, T, [[-1.1,0,0],[-1.1,0,0],[-1.1,0,0],[-1.1,0,0],[-1.1,0,0]]),
+          boneRotT(skeletonRig.head, T, [[0.15,0,0],[0.15,0,0],[0.15,0,0],[0.15,0,0],[0.15,0,0]])
+        ]);
+        var runClip = new THREE.AnimationClip('Run', 0.68, runTracks);
+        a = mixer.clipAction(runClip); a.setLoop(THREE.LoopRepeat, Infinity); actions.Run = a;
+      }
+
+      // Wave (Acenar com braço e mão do esqueleto)
+      if (!actions.Wave) {
+        var WT = [0, 0.35, 2.1, 2.7];
+        var FT = [0, 0.35, 0.6, 0.85, 1.1, 1.35, 1.6, 1.85, 2.1, 2.7];
+        var waveTracks = safeTracks([
+          boneRotT(skeletonRig.armR, WT, [[0,0,0],[-1.5,0,0.55],[-1.5,0,0.55],[0,0,0]]),
+          boneRotT(skeletonRig.forearmR, FT, [
+            [0,0,0],[-0.8,0,-0.35],[-0.8,0,0.40],[-0.8,0,-0.35],[-0.8,0,0.40],[-0.8,0,-0.35],[-0.8,0,0.40],[-0.8,0,-0.35],[-0.8,0,0],[0,0,0]
+          ]),
+          boneRotT(skeletonRig.handR, FT, [
+            [0,0,0],[0,0,-0.25],[0,0,0.30],[0,0,-0.25],[0,0,0.30],[0,0,-0.25],[0,0,0.30],[0,0,0],[0,0,0],[0,0,0]
+          ]),
+          boneRotT(skeletonRig.spine, WT, [[0,0,0],[0.04,0,-0.06],[0.04,0,-0.06],[0,0,0]]),
+          boneRotT(skeletonRig.head, WT, [[0,0,0],[-0.05,0.08,0.12],[-0.05,0.08,0.12],[0,0,0]])
+        ]);
+        if (mMap.smile.length) {
+          waveTracks = waveTracks.concat(createMorphTracks(mMap.smile, WT, [0, 0.75, 0.75, 0]));
+        }
+        var waveClip = new THREE.AnimationClip('Wave', 2.7, waveTracks);
+        a = mixer.clipAction(waveClip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Wave = a;
+      }
+
+      // Jump (Salto com articulações reais)
+      if (!actions.Jump) {
+        T = [0, 0.28, 0.5, 0.75, 1.0, 1.25, 1.5];
+        var jumpTracks = safeTracks([
+          bonePosT(skeletonRig.hips, T, [[0,0,0],[0,-0.15,0],[0,0.35,0],[0,0.50,0],[0,-0.12,0],[0,-0.03,0],[0,0,0]]),
+          boneRotT(skeletonRig.spine, T, [[0,0,0],[-0.25,0,0],[0.10,0,0],[0.15,0,0],[-0.20,0,0],[-0.05,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.legL, T, [[0,0,0],[-0.60,0,0],[-0.30,0,0],[-0.80,0,0],[-0.90,0,0],[-0.25,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.legR, T, [[0,0,0],[-0.60,0,0],[-0.30,0,0],[-0.80,0,0],[-0.90,0,0],[-0.25,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.shinL, T, [[0,0,0],[1.0,0,0],[0.20,0,0],[1.10,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.shinR, T, [[0,0,0],[1.0,0,0],[0.20,0,0],[1.10,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.armL, T, [[0,0,0],[0.50,0,0.15],[-1.8,0,-0.25],[-2.2,0,-0.35],[-0.45,0,-0.10],[-0.15,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.armR, T, [[0,0,0],[0.50,0,-0.15],[-1.8,0,0.25],[-2.2,0,0.35],[-0.45,0,0.10],[-0.15,0,0],[0,0,0]])
+        ]);
+        var jumpClip = new THREE.AnimationClip('Jump', 1.5, jumpTracks);
+        a = mixer.clipAction(jumpClip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Jump = a;
+      }
+
+      // Dance (Dança com esqueleto)
+      if (!actions.Dance) {
+        T = [0, 0.4, 0.8, 1.2, 1.6];
+        var danceTracks = safeTracks([
+          boneRotT(skeletonRig.hips, T, [[0,0,0],[0,0.18,-0.10],[0,-0.18,0.10],[0,0.18,-0.10],[0,0,0]]),
+          boneRotT(skeletonRig.spine, T, [[0,0,0],[0,-0.12,0.08],[0,0.12,-0.08],[0,-0.12,0.08],[0,0,0]]),
+          boneRotT(skeletonRig.armL, T, [[0,0,0],[-0.7,0.3,-0.6],[-0.2,0,-0.3],[-0.7,0.3,-0.6],[0,0,0]]),
+          boneRotT(skeletonRig.armR, T, [[0,0,0],[-0.2,0,0.3],[-0.7,-0.3,0.6],[-0.2,0,0.3],[0,0,0]]),
+          boneRotT(skeletonRig.forearmL, T, [[-0.4,0,0],[-1.2,0,0],[-0.4,0,0],[-1.2,0,0],[-0.4,0,0]]),
+          boneRotT(skeletonRig.forearmR, T, [[-1.2,0,0],[-0.4,0,0],[-1.2,0,0],[-0.4,0,0],[-1.2,0,0]]),
+          boneRotT(skeletonRig.head, T, [[0,0,0],[0.05,0.08,-0.06],[-0.05,-0.08,0.06],[0.05,0.08,-0.06],[0,0,0]])
+        ]);
+        var danceClip = new THREE.AnimationClip('Dance', 1.6, danceTracks);
+        a = mixer.clipAction(danceClip); a.setLoop(THREE.LoopRepeat, Infinity); actions.Dance = a;
+      }
+
+      // Bow (Reverência elegante com tronco e cabeça)
+      if (!actions.Bow) {
+        T = [0, 0.6, 1.6, 2.4];
+        var bowTracks = safeTracks([
+          boneRotT(skeletonRig.spine, T, [[0,0,0],[-0.55,0,0],[-0.55,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.chest, T, [[0,0,0],[-0.20,0,0],[-0.20,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.head, T, [[0,0,0],[-0.30,0,0],[-0.30,0,0],[0,0,0]]),
+          boneRotT(skeletonRig.armL, T, [[0,0,0],[-0.15,0,0.08],[-0.15,0,0.08],[0,0,0]]),
+          boneRotT(skeletonRig.armR, T, [[0,0,0],[-0.15,0,-0.08],[-0.15,0,-0.08],[0,0,0]])
+        ]);
+        var bowClip = new THREE.AnimationClip('Bow', 2.4, bowTracks);
+        a = mixer.clipAction(bowClip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Bow = a;
+      }
+    }
+
+    // 3. Sorrir (Smile)
+    if (!actions.Smile) {
+      var smileTracks = [];
+      var sTargets = mMap.smile.length ? mMap.smile : names.slice(0, 1);
+      smileTracks = smileTracks.concat(createMorphTracks(sTargets, [0, 0.4, 1.5, 2.2], [0, 0.85, 0.85, 0]));
+      if (mMap.cheek.length) smileTracks = smileTracks.concat(createMorphTracks(mMap.cheek, [0, 0.4, 1.5, 2.2], [0, 0.35, 0.35, 0]));
+      if (mMap.jawOpen.length) smileTracks = smileTracks.concat(createMorphTracks(mMap.jawOpen, [0, 0.4, 1.5, 2.2], [0, 0.12, 0.12, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        smileTracks.push(boneRotT(skeletonRig.head, [0, 0.4, 1.5, 2.2], [[0,0,0],[-0.08,0,0.03],[-0.08,0,0.03],[0,0,0]]));
+      } else {
+        smileTracks.push(rotT(headNode, [0, 0.4, 1.5, 2.2], [[0,0,0],[-0.08,0,0.03],[-0.08,0,0.03],[0,0,0]]));
+      }
+      var smileClip = new THREE.AnimationClip('Smile', 2.2, safeTracks(smileTracks));
+      a = mixer.clipAction(smileClip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Smile = a;
+    }
+
+    // 4. Ficar triste (Sad)
+    if (!actions.Sad) {
+      var sadTracks = [];
+      var fTargets = mMap.frown.length ? mMap.frown : (names.length > 1 ? [names[1]] : []);
+      sadTracks = sadTracks.concat(createMorphTracks(fTargets, [0, 0.5, 1.6, 2.5], [0, 0.8, 0.8, 0]));
+      if (mMap.browDown.length) sadTracks = sadTracks.concat(createMorphTracks(mMap.browDown, [0, 0.5, 1.6, 2.5], [0, 0.55, 0.55, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        sadTracks.push(boneRotT(skeletonRig.head, [0, 0.5, 1.6, 2.5], [[0,0,0],[0.18,0,0],[0.18,0,0],[0,0,0]]));
+        if (skeletonRig.spine) sadTracks.push(boneRotT(skeletonRig.spine, [0, 0.5, 1.6, 2.5], [[0,0,0],[-0.10,0,0],[-0.10,0,0],[0,0,0]]));
+      } else {
+        sadTracks.push(rotT(headNode, [0, 0.5, 1.6, 2.5], [[0,0,0],[0.18,0,0],[0.18,0,0],[0,0,0]]));
+      }
+      var sadClip = new THREE.AnimationClip('Sad', 2.5, safeTracks(sadTracks));
+      a = mixer.clipAction(sadClip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Sad = a;
+    }
+
+    // 5. Surpreso (Surprise)
+    if (!actions.Surprise) {
+      var surpTracks = [];
+      if (mMap.browUp.length) surpTracks = surpTracks.concat(createMorphTracks(mMap.browUp, [0, 0.3, 1.2, 2.0], [0, 0.9, 0.9, 0]));
+      if (mMap.jawOpen.length) surpTracks = surpTracks.concat(createMorphTracks(mMap.jawOpen, [0, 0.3, 1.2, 2.0], [0, 0.55, 0.55, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        surpTracks.push(boneRotT(skeletonRig.head, [0, 0.3, 1.2, 2.0], [[0,0,0],[-0.14,0,0],[-0.14,0,0],[0,0,0]]));
+      } else {
+        surpTracks.push(rotT(headNode, [0, 0.3, 1.2, 2.0], [[0,0,0],[-0.14,0,0],[-0.14,0,0],[0,0,0]]));
+      }
+      var surpClip = new THREE.AnimationClip('Surprise', 2.0, safeTracks(surpTracks));
+      a = mixer.clipAction(surpClip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Surprise = a;
+    }
+
+    // 6. Falar (Talk)
+    if (!actions.Talk) {
+      var talkTracks = [];
+      var jTargets = mMap.jawOpen.length ? mMap.jawOpen : (names.length ? [names[0]] : []);
+      var talkTimes = [0, 0.25, 0.5, 0.8, 1.1, 1.4, 1.7, 2.0, 2.4];
+      var talkVals = [0.05, 0.45, 0.10, 0.55, 0.18, 0.50, 0.12, 0.38, 0.05];
+      talkTracks = talkTracks.concat(createMorphTracks(jTargets, talkTimes, talkVals));
+      if (hasSkeleton && skeletonRig.head) {
+        talkTracks.push(boneRotT(skeletonRig.head, [0, 0.6, 1.2, 1.8, 2.4], [[0,0,0],[0.07,0.03,0],[-0.03,-0.02,0],[0.05,0.02,0],[0,0,0]]));
+      } else {
+        talkTracks.push(rotT(headNode, [0, 0.6, 1.2, 1.8, 2.4], [[0,0,0],[0.07,0.03,0],[-0.03,-0.02,0],[0.05,0.02,0],[0,0,0]]));
+      }
+      var talkClip = new THREE.AnimationClip('Talk', 2.4, safeTracks(talkTracks));
+      a = mixer.clipAction(talkClip); a.setLoop(THREE.LoopRepeat, Infinity); actions.Talk = a;
+    }
+
+    // 7. Fallback: Puppet body se não houver esqueleto
+    var hasBob = root && root.getObjectByName('B_Bob');
+    if (hasBob && !hasSkeleton) {
+      if (!actions.Run) {
+        T = [0, 0.18, 0.36, 0.54, 0.72];
+        var run = new THREE.AnimationClip('Run', 0.72, [
+          vecT('B_Bob', 'position', T, [[0,0,0],[0,-0.08,0],[0,0,0],[0,-0.08,0],[0,0,0]]),
+          rotT('B_LegL', T, [[-0.95,0,0],[-0.10,0,0],[0.75,0,0],[-0.10,0,0],[-0.95,0,0]]),
+          rotT('B_ShinL', T, [[0.5,0,0],[1.2,0,0],[0.3,0,0],[1.2,0,0],[0.5,0,0]]),
+          rotT('B_LegR', T, [[0.75,0,0],[-0.10,0,0],[-0.95,0,0],[-0.10,0,0],[0.75,0,0]]),
+          rotT('B_ShinR', T, [[0.3,0,0],[1.2,0,0],[0.5,0,0],[1.2,0,0],[0.3,0,0]]),
+          rotT('B_ArmL', T, [[0.8,0,0.10],[0,0,0.10],[-0.7,0,0.10],[0,0,0.10],[0.8,0,0.10]]),
+          rotT('B_ArmR', T, [[-0.7,0,-0.10],[0,0,-0.10],[0.8,0,-0.10],[0,0,-0.10],[-0.7,0,-0.10]]),
+          rotT('B_ForearmL', T, [[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0]]),
+          rotT('B_ForearmR', T, [[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0],[-1.15,0,0]]),
+          rotT('B_Torso', T, [[-0.14,0.05,0],[-0.14,0,0],[-0.14,-0.05,0],[-0.14,0,0],[-0.14,0.05,0]])
+        ]);
+        a = mixer.clipAction(run); a.setLoop(THREE.LoopRepeat, Infinity); actions.Run = a;
+      }
+      if (!actions.Jump) {
+        T = [0, 0.28, 0.5, 0.75, 1.0, 1.25, 1.5];
+        var jump = new THREE.AnimationClip('Jump', 1.5, [
+          vecT('B_Bob', 'position', T, [[0,0,0],[0,-0.12,0],[0,0.5,0],[0,0.8,0],[0,-0.10,0],[0,-0.03,0],[0,0,0]]),
+          vecT('B_Shadow', 'scale', T, [[1,1,1],[1.10,1,1.10],[0.75,1,0.75],[0.55,1,0.55],[1.05,1,1.05],[1,1,1],[1,1,1]]),
+          rotT('B_LegL', T, [[0,0,0],[-0.55,0,0],[-0.25,0,0],[-0.75,0,0],[-0.9,0,0],[-0.25,0,0],[0,0,0]]),
+          rotT('B_LegR', T, [[0,0,0],[-0.55,0,0],[-0.25,0,0],[-0.75,0,0],[-0.9,0,0],[-0.25,0,0],[0,0,0]]),
+          rotT('B_ShinL', T, [[0,0,0],[0.95,0,0],[0.15,0,0],[1.05,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
+          rotT('B_ShinR', T, [[0,0,0],[0.95,0,0],[0.15,0,0],[1.05,0,0],[1.15,0,0],[0.35,0,0],[0,0,0]]),
+          rotT('B_Torso', T, [[0,0,0],[-0.28,0,0],[0.06,0,0],[0.10,0,0],[-0.24,0,0],[-0.06,0,0],[0,0,0]]),
+          rotT('B_ArmL', T, [[0,0,0],[0.55,0,0.12],[-1.9,0,-0.30],[-2.35,0,-0.45],[-0.5,0,-0.10],[-0.15,0,0],[0,0,0]]),
+          rotT('B_ArmR', T, [[0,0,0],[0.55,0,-0.12],[-1.9,0,0.30],[-2.35,0,0.45],[-0.5,0,0.10],[-0.15,0,0],[0,0,0]]),
+          rotT('B_ForearmL', T, [[0,0,0],[-0.35,0,0],[-0.10,0,0],[-0.10,0,0],[-0.50,0,0],[-0.10,0,0],[0,0,0]]),
+          rotT('B_ForearmR', T, [[0,0,0],[-0.35,0,0],[-0.10,0,0],[-0.10,0,0],[-0.50,0,0],[-0.10,0,0],[0,0,0]])
+        ]);
+        a = mixer.clipAction(jump); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Jump = a;
+      }
+      if (!actions.Wave) {
+        var WT = [0, 0.3, 2.05, 2.5, 2.8];
+        var FT = [0, 0.3, 0.55, 0.8, 1.05, 1.3, 1.55, 1.8, 2.05, 2.5, 2.8];
+        var waveTracks = [
+          rotT('B_ArmR', WT, [[0,0,0],[0,0,-2.35],[0,0,-2.35],[0,0,0],[0,0,0]]),
+          rotT('B_ForearmR', FT, [[0,0,0],[0,0,-0.35],[0,0,0.55],[0,0,-0.55],[0,0,0.55],[0,0,-0.55],[0,0,0.55],[0,0,-0.35],[0,0,0],[0,0,0],[0,0,0]]),
+          rotT('B_Torso', WT, [[0,0,0],[0.04,0,-0.06],[0.04,0,-0.06],[0,0,0],[0,0,0]]),
+          rotT(headNode, WT, [[0,0,0],[0,0,-0.12],[0,0,-0.12],[0,0,0],[0,0,0]])
+        ];
+        if (mMap.smile.length) waveTracks = waveTracks.concat(createMorphTracks(mMap.smile, WT, [0, 0.7, 0.7, 0, 0]));
+        var wave = new THREE.AnimationClip('Wave', 2.8, waveTracks);
+        a = mixer.clipAction(wave); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; actions.Wave = a;
+      }
+    }
+  }
+
+  function registerPromptAnimation(promptText) {
+    if (!promptText || !promptText.trim()) return;
+    var p = promptText.toLowerCase();
+    var mMap = getMorphMap();
+    var tracks = [];
+    var dur = 2.5;
+    var headNode = head ? head.name : 'Head';
+    var hasSkeleton = skeletonRig && detectedBones.length > 0;
+
+    var hasSmile = /sorri|alegr|feliz|rir|gargalh|smile|happy/i.test(p);
+    var hasSad = /trist|choro|desol|chatead|frown|sad/i.test(p);
+    var hasSurprise = /susto|surpres|boquiabert|espant|shock|surprise/i.test(p);
+    var hasTalk = /falar|conversa|dialog|discurs|talk|speak|voz/i.test(p);
+    var hasBlink = /piscar|olho|piscadel|blink|wink/i.test(p);
+    var hasYawn = /bocejo|sono|dormir|yawn|sleepy/i.test(p);
+    var hasAngry = /bravo|raiva|zangad|furios|angry/i.test(p);
+    var hasDoubt = /dúvida|duvida|desconfiad|estranh|curios|doubt/i.test(p);
+    var hasLookSide = /olhar.*(lado|direit|esquerd)|virar|olhe/i.test(p);
+    var hasWave = /acenar|tchau|adeus|acene|wave|ola|olá|oi\b/i.test(p);
+    var hasWalk = /andar|caminh|passo|walk|ande/i.test(p);
+    var hasRun = /correr|corrida|corra|run/i.test(p);
+    var hasArmsUp = /levantar.*braço|braço.*cima|comemor|viva|celebr|arms.*up/i.test(p);
+    var hasBow = /reverência|reverencia|curv|inclinar.*tronco|bow/i.test(p);
+    var hasCrouch = /agach|crouch|squat/i.test(p);
+    var hasDance = /danç|danc|festa|dance/i.test(p);
+
+    // Movimentação esquelética ou postural correspondente ao prompt
+    if (hasWave) {
+      dur = Math.max(dur, 2.7);
+      if (hasSkeleton) {
+        tracks.push(boneRotT(skeletonRig.armR, [0, 0.35, 2.1, 2.7], [[0,0,0],[-1.5,0,0.55],[-1.5,0,0.55],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.forearmR, [0, 0.35, 0.6, 0.85, 1.1, 1.35, 1.6, 1.85, 2.1, 2.7], [
+          [0,0,0],[-0.8,0,-0.35],[-0.8,0,0.40],[-0.8,0,-0.35],[-0.8,0,0.40],[-0.8,0,-0.35],[-0.8,0,0.40],[-0.8,0,-0.35],[-0.8,0,0],[0,0,0]
+        ]));
+        tracks.push(boneRotT(skeletonRig.handR, [0, 0.35, 0.6, 0.85, 1.1, 1.35, 1.6, 1.85, 2.1, 2.7], [
+          [0,0,0],[0,0,-0.25],[0,0,0.30],[0,0,-0.25],[0,0,0.30],[0,0,-0.25],[0,0,0.30],[0,0,0],[0,0,0],[0,0,0]
+        ]));
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.35, 2.1, 2.7], [[0,0,0],[-0.05,0.08,0.12],[-0.05,0.08,0.12],[0,0,0]]));
+      }
+      tracks = tracks.concat(createMorphTracks(mMap.smile, [0, 0.4, 2.1, 2.7], [0, 0.8, 0.8, 0]));
+    }
+
+    if (hasArmsUp) {
+      dur = Math.max(dur, 2.6);
+      if (hasSkeleton) {
+        tracks.push(boneRotT(skeletonRig.armL, [0, 0.5, 1.8, 2.6], [[0,0,0],[-2.4,0,-0.4],[-2.4,0,-0.4],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.armR, [0, 0.5, 1.8, 2.6], [[0,0,0],[-2.4,0,0.4],[-2.4,0,0.4],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.forearmL, [0, 0.5, 1.8, 2.6], [[0,0,0],[-0.4,0,0],[-0.4,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.forearmR, [0, 0.5, 1.8, 2.6], [[0,0,0],[-0.4,0,0],[-0.4,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.5, 1.8, 2.6], [[0,0,0],[-0.22,0,0],[-0.22,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.spine, [0, 0.5, 1.8, 2.6], [[0,0,0],[0.08,0,0],[0.08,0,0],[0,0,0]]));
+      }
+      tracks = tracks.concat(createMorphTracks(mMap.smile, [0, 0.4, 1.8, 2.6], [0, 0.9, 0.9, 0]));
+    }
+
+    if (hasBow) {
+      dur = Math.max(dur, 2.5);
+      if (hasSkeleton) {
+        tracks.push(boneRotT(skeletonRig.spine, [0, 0.6, 1.7, 2.5], [[0,0,0],[-0.55,0,0],[-0.55,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.6, 1.7, 2.5], [[0,0,0],[-0.30,0,0],[-0.30,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.armL, [0, 0.6, 1.7, 2.5], [[0,0,0],[-0.15,0,0.1],[-0.15,0,0.1],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.armR, [0, 0.6, 1.7, 2.5], [[0,0,0],[-0.15,0,-0.1],[-0.15,0,-0.1],[0,0,0]]));
+      }
+    }
+
+    if (hasCrouch) {
+      dur = Math.max(dur, 2.6);
+      if (hasSkeleton) {
+        tracks.push(bonePosT(skeletonRig.hips, [0, 0.6, 1.8, 2.6], [[0,0,0],[0,-0.28,0],[0,-0.28,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.legL, [0, 0.6, 1.8, 2.6], [[0,0,0],[-0.8,0,0],[-0.8,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.legR, [0, 0.6, 1.8, 2.6], [[0,0,0],[-0.8,0,0],[-0.8,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.shinL, [0, 0.6, 1.8, 2.6], [[0,0,0],[1.3,0,0],[1.3,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.shinR, [0, 0.6, 1.8, 2.6], [[0,0,0],[1.3,0,0],[1.3,0,0],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.armL, [0, 0.6, 1.8, 2.6], [[0,0,0],[-0.4,0,0.2],[-0.4,0,0.2],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.armR, [0, 0.6, 1.8, 2.6], [[0,0,0],[-0.4,0,-0.2],[-0.4,0,-0.2],[0,0,0]]));
+      }
+    }
+
+    if (hasDance) {
+      dur = Math.max(dur, 2.8);
+      if (hasSkeleton) {
+        tracks.push(boneRotT(skeletonRig.hips, [0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8], [
+          [0,0,0],[0,0.18,-0.10],[0,-0.18,0.10],[0,0.18,-0.10],[0,-0.18,0.10],[0,0.18,-0.10],[0,-0.18,0.10],[0,0,0]
+        ]));
+        tracks.push(boneRotT(skeletonRig.armL, [0, 0.7, 1.4, 2.1, 2.8], [[0,0,0],[-0.8,0.4,-0.5],[-0.2,0,-0.2],[-0.8,0.4,-0.5],[0,0,0]]));
+        tracks.push(boneRotT(skeletonRig.armR, [0, 0.7, 1.4, 2.1, 2.8], [[0,0,0],[-0.2,0,0.2],[-0.8,-0.4,0.5],[-0.2,0,0.2],[0,0,0]]));
+      }
+      tracks = tracks.concat(createMorphTracks(mMap.smile, [0, 0.3, 2.3, 2.8], [0, 0.85, 0.85, 0]));
+    }
+
+    if (hasWalk && hasSkeleton) {
+      dur = Math.max(dur, 2.4);
+      var wT = [0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4];
+      tracks.push(boneRotT(skeletonRig.legL, wT, [[0,0,0],[-0.45,0,0],[0,0,0],[0.40,0,0],[0,0,0],[-0.45,0,0],[0,0,0],[0.40,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.legR, wT, [[0,0,0],[0.40,0,0],[0,0,0],[-0.45,0,0],[0,0,0],[0.40,0,0],[0,0,0],[-0.45,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.shinL, wT, [[0,0,0],[0.15,0,0],[0.55,0,0],[0.05,0,0],[0.15,0,0],[0.15,0,0],[0.55,0,0],[0.05,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.shinR, wT, [[0,0,0],[0.05,0,0],[0.10,0,0],[0.55,0,0],[0.05,0,0],[0.05,0,0],[0.10,0,0],[0.55,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.armL, wT, [[0,0,0],[0.30,0,0.05],[0,0,0.05],[-0.30,0,0.05],[0,0,0.05],[0.30,0,0.05],[0,0,0.05],[-0.30,0,0.05],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.armR, wT, [[0,0,0],[-0.30,0,-0.05],[0,0,-0.05],[0.30,0,-0.05],[0,0,-0.05],[-0.30,0,-0.05],[0,0,-0.05],[0.30,0,-0.05],[0,0,0]]));
+    }
+
+    if (hasRun && hasSkeleton) {
+      dur = Math.max(dur, 2.0);
+      var rT = [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+      tracks.push(boneRotT(skeletonRig.spine, rT, [[0,0,0],[-0.2,0,0],[-0.2,0,0],[-0.2,0,0],[-0.2,0,0],[-0.2,0,0],[-0.2,0,0],[-0.2,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.legL, rT, [[0,0,0],[-0.85,0,0],[0,0,0],[0.70,0,0],[0,0,0],[-0.85,0,0],[0,0,0],[0.70,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.legR, rT, [[0,0,0],[0.70,0,0],[0,0,0],[-0.85,0,0],[0,0,0],[0.70,0,0],[0,0,0],[-0.85,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.shinL, rT, [[0,0,0],[0.35,0,0],[1.15,0,0],[0.20,0,0],[0.35,0,0],[0.35,0,0],[1.15,0,0],[0.20,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.shinR, rT, [[0,0,0],[0.20,0,0],[0.40,0,0],[1.15,0,0],[0.20,0,0],[0.20,0,0],[0.40,0,0],[1.15,0,0],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.armL, rT, [[0,0,0],[0.75,0,0.1],[0,0,0.1],[-0.70,0,0.1],[0,0,0.1],[0.75,0,0.1],[0,0,0.1],[-0.70,0,0.1],[0,0,0]]));
+      tracks.push(boneRotT(skeletonRig.armR, rT, [[0,0,0],[-0.70,0,-0.1],[0,0,-0.1],[0.75,0,-0.1],[0,0,-0.1],[-0.70,0,-0.1],[0,0,-0.1],[0.75,0,-0.1],[0,0,0]]));
+    }
+
+    if (hasSmile) {
+      tracks = tracks.concat(createMorphTracks(mMap.smile, [0, 0.4, 1.6, 2.4], [0, 0.9, 0.9, 0]));
+      tracks = tracks.concat(createMorphTracks(mMap.cheek, [0, 0.4, 1.6, 2.4], [0, 0.4, 0.4, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.4, 1.6, 2.4], [[0,0,0],[-0.08,0,0.05],[-0.08,0,0.05],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.4, 1.6, 2.4], [[0,0,0],[-0.08,0,0.05],[-0.08,0,0.05],[0,0,0]]));
+      }
+    }
+    if (hasSad) {
+      tracks = tracks.concat(createMorphTracks(mMap.frown, [0, 0.5, 1.7, 2.5], [0, 0.85, 0.85, 0]));
+      tracks = tracks.concat(createMorphTracks(mMap.browDown, [0, 0.5, 1.7, 2.5], [0, 0.6, 0.6, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.5, 1.7, 2.5], [[0,0,0],[0.18,0,0],[0.18,0,0],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.5, 1.7, 2.5], [[0,0,0],[0.18,0,0],[0.18,0,0],[0,0,0]]));
+      }
+    }
+    if (hasSurprise) {
+      tracks = tracks.concat(createMorphTracks(mMap.browUp, [0, 0.3, 1.3, 2.2], [0, 0.95, 0.95, 0]));
+      tracks = tracks.concat(createMorphTracks(mMap.jawOpen, [0, 0.3, 1.3, 2.2], [0, 0.6, 0.6, 0]));
+      if (hasSkeleton) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.3, 1.3, 2.2], [[0,0,0],[-0.15,0,0],[-0.15,0,0],[0,0,0]]));
+        if (skeletonRig.spine) tracks.push(boneRotT(skeletonRig.spine, [0, 0.3, 1.3, 2.2], [[0,0,0],[0.12,0,0],[0.12,0,0],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.3, 1.3, 2.2], [[0,0,0],[-0.15,0,0],[-0.15,0,0],[0,0,0]]));
+      }
+    }
+    if (hasTalk) {
+      dur = Math.max(dur, 3.0);
+      var tT = [0, 0.25, 0.5, 0.8, 1.1, 1.4, 1.8, 2.2, 2.6, 3.0];
+      var tV = [0, 0.45, 0.1, 0.55, 0.15, 0.5, 0.12, 0.4, 0.1, 0];
+      tracks = tracks.concat(createMorphTracks(mMap.jawOpen, tT, tV));
+      if (hasSkeleton) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.7, 1.5, 2.2, 3.0], [[0,0,0],[0.08,0.04,0],[-0.04,-0.03,0],[0.06,0.02,0],[0,0,0]]));
+        if (skeletonRig.armR) tracks.push(boneRotT(skeletonRig.armR, [0, 0.7, 1.5, 2.2, 3.0], [[0,0,0],[-0.35,0,-0.2],[-0.1,0,-0.1],[-0.3,0,-0.15],[0,0,0]]));
+        if (skeletonRig.forearmR) tracks.push(boneRotT(skeletonRig.forearmR, [0, 0.7, 1.5, 2.2, 3.0], [[0,0,0],[-0.6,0,0],[-0.2,0,0],[-0.5,0,0],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.7, 1.5, 2.2, 3.0], [[0,0,0],[0.08,0.04,0],[-0.04,-0.03,0],[0.06,0.02,0],[0,0,0]]));
+      }
+    }
+    if (hasYawn) {
+      dur = Math.max(dur, 3.2);
+      tracks = tracks.concat(createMorphTracks(mMap.jawOpen, [0, 0.8, 2.0, 3.2], [0, 1.0, 1.0, 0]));
+      tracks = tracks.concat(createMorphTracks(mMap.blink, [0, 0.8, 2.2, 3.2], [0, 0.8, 0.8, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.8, 2.0, 3.2], [[0,0,0],[-0.18,0,0],[-0.18,0,0],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.8, 2.0, 3.2], [[0,0,0],[-0.18,0,0],[-0.18,0,0],[0,0,0]]));
+      }
+    }
+    if (hasBlink) {
+      if (/um olho|piscadel|wink/i.test(p)) {
+        var sideBlink = mMap.blinkL.length ? mMap.blinkL : mMap.blink;
+        tracks = tracks.concat(createMorphTracks(sideBlink, [0, 0.2, 0.5, 1.2], [0, 1.0, 1.0, 0]));
+        tracks = tracks.concat(createMorphTracks(mMap.smileR.length ? mMap.smileR : mMap.smile, [0, 0.2, 0.7, 1.2], [0, 0.5, 0.5, 0]));
+      } else {
+        tracks = tracks.concat(createMorphTracks(mMap.blink, [0, 0.2, 0.35, 0.7, 0.85, 1.0, 1.6], [0, 1.0, 0, 0, 1.0, 0, 0]));
+      }
+    }
+    if (hasAngry) {
+      tracks = tracks.concat(createMorphTracks(mMap.browDown, [0, 0.4, 1.6, 2.4], [0, 0.9, 0.9, 0]));
+      tracks = tracks.concat(createMorphTracks(mMap.frown, [0, 0.4, 1.6, 2.4], [0, 0.7, 0.7, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.4, 1.6, 2.4], [[0,0,0],[0.12,0,0],[0.12,0,0],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.4, 1.6, 2.4], [[0,0,0],[0.10,0,0],[0.10,0,0],[0,0,0]]));
+      }
+    }
+    if (hasDoubt) {
+      tracks = tracks.concat(createMorphTracks(mMap.browUp, [0, 0.3, 1.5, 2.2], [0, 0.6, 0.6, 0]));
+      tracks = tracks.concat(createMorphTracks(mMap.cheek, [0, 0.3, 1.5, 2.2], [0, 0.4, 0.4, 0]));
+      if (hasSkeleton && skeletonRig.head) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.3, 1.5, 2.2], [[0,0,0],[-0.04,0.18,-0.12],[-0.04,0.18,-0.12],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.3, 1.5, 2.2], [[0,0,0],[-0.04,0.18,-0.12],[-0.04,0.18,-0.12],[0,0,0]]));
+      }
+    }
+    if (hasLookSide) {
+      if (hasSkeleton && skeletonRig.head) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.5, 1.5, 2.2], [[0,0,0],[0,0.45,0],[0,0.45,0],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.5, 1.5, 2.2], [[0,0,0],[0,0.45,0],[0,0.45,0],[0,0,0]]));
+      }
+    }
+
+    tracks = safeTracks(tracks);
+
+    if (tracks.length === 0) {
+      if (names.length > 0) {
+        var sampleKeys = names.slice(0, Math.min(3, names.length));
+        sampleKeys.forEach(function (k, idx) {
+          tracks = tracks.concat(createMorphTracks([k], [0, 0.4 + idx * 0.2, 1.4, 2.2], [0, 0.75, 0.75, 0]));
+        });
+      }
+      if (hasSkeleton && skeletonRig.head) {
+        tracks.push(boneRotT(skeletonRig.head, [0, 0.5, 1.4, 2.2], [[0,0,0],[0.08,0.15,0.05],[0.08,0.15,0.05],[0,0,0]]));
+      } else {
+        tracks.push(rotT(headNode, [0, 0.5, 1.4, 2.2], [[0,0,0],[0.08,0.15,0.05],[0.08,0.15,0.05],[0,0,0]]));
+      }
+      tracks = safeTracks(tracks);
+    }
+
+    var clipName = promptText.length > 18 ? promptText.slice(0, 18) + '…' : promptText;
+    var promptClip = new THREE.AnimationClip(clipName, dur, tracks);
+    var action = mixer.clipAction(promptClip);
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    actions[clipName] = action;
+
+    updateClipsUI();
+    play(clipName);
+    statusEl.textContent = 'Executando animação gerada: "' + promptText + '"';
+  }
+
+  function frameObject(obj) {
+    var box = new THREE.Box3().setFromObject(obj);
+    if (box.isEmpty()) return;
+    var size = box.getSize(new THREE.Vector3());
+    var center = box.getCenter(new THREE.Vector3());
+    var maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim > 0.0001) {
+      var fov = camera.fov * (Math.PI / 180);
+      var dist = Math.abs(maxDim / Math.sin(fov / 2)) * 0.95;
+      camera.position.set(center.x, center.y + size.y * 0.15, center.z + dist);
+      camera.near = Math.max(0.01, dist / 200);
+      camera.far = Math.max(100, dist * 100);
+      camera.updateProjectionMatrix();
+      controls.target.copy(center);
+      controls.maxDistance = dist * 20;
+      controls.minDistance = Math.max(0.01, dist / 50);
+      controls.update();
+    }
+  }
+
+  function resetToNeutral() {
+    enterManual();
+    M.w = {};
+    M.blink = M.droop = M.squint = M.gp = M.gy = M.hp = M.hy = M.hr = 0;
+    for (var k in sliders) {
+      sliders[k].input.value = 0;
+      sliders[k].out.textContent = '0.00';
+    }
+    applyManual();
+  }
+
+  function updateClipsUI() {
+    var container = document.getElementById('clips-container');
+    container.innerHTML = '';
+    var clipNames = Object.keys(actions);
+
+    if (clipNames.length === 0) {
+      var p = document.createElement('p');
+      p.className = 'hint';
+      p.style.margin = '4px 0 10px';
+      p.textContent = 'Nenhuma animação disponível.';
+      container.appendChild(p);
+      return;
+    }
+
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.style.gridTemplateColumns = clipNames.length > 2 ? '1fr 1fr' : '1fr';
+
+    clipNames.forEach(function (name) {
+      var btn = document.createElement('button');
+      btn.className = (name === 'Idle' || name === 'Run' || name === 'Wave' || name === 'Smile') ? 'primary' : '';
+      btn.setAttribute('data-clip', name);
+      var emoji = name === 'Run' ? '🏃 ' : name === 'Jump' ? '🤸 ' : name === 'Wave' ? '👋 ' : name === 'Smile' ? '😊 ' : name === 'Sad' ? '😢 ' : name === 'Surprise' ? '😲 ' : name === 'Talk' ? '🗣️ ' : name === 'Idle' ? '💤 ' : '✨ ';
+      btn.textContent = emoji + name;
+      btn.addEventListener('click', function () { play(name); });
+      row.appendChild(btn);
     });
-    document.getElementById('reset').addEventListener('click', function () {
-      enterManual(); M.w = {}; M.blink = M.droop = M.squint = M.gp = M.gy = M.hp = M.hy = M.hr = 0;
-      for (var k in sliders) { sliders[k].input.value = 0; sliders[k].out.textContent = '0.00'; }
-      applyManual();
+    container.appendChild(row);
+
+    var subRow = document.createElement('div');
+    subRow.className = 'row';
+    subRow.style.marginTop = '6px';
+    var stopBtn = document.createElement('button');
+    stopBtn.textContent = '⏸ Pausar';
+    stopBtn.addEventListener('click', function () {
+      if (mixer) mixer.stopAllAction();
+      mode = 'manual';
+      setActiveBtn(null);
     });
-    play('Idle');
-    statusEl.textContent = names.length + ' morph targets · ' + (gltf.animations.length + 3) + ' clipes';
-  }, function (err) { statusEl.textContent = 'erro ao carregar o modelo'; console.error(err); });
+    var resetBtn = document.createElement('button');
+    resetBtn.id = 'reset';
+    resetBtn.textContent = 'Neutro';
+    resetBtn.addEventListener('click', resetToNeutral);
+
+    subRow.appendChild(stopBtn);
+    subRow.appendChild(resetBtn);
+    container.appendChild(subRow);
+  }
+
+  function loadModelFromBuffer(buf, modelName, isCustom) {
+    statusEl.textContent = 'Processando modelo 3D…';
+
+    if (mixer) {
+      mixer.stopAllAction();
+      if (root) mixer.uncacheRoot(root);
+    }
+    if (root) {
+      scene.remove(root);
+      root = null;
+    }
+
+    faceMeshes = [];
+    dict = {};
+    names = [];
+    actions = {};
+    current = null;
+    head = null;
+    eyeL = null;
+    eyeR = null;
+    lids = {};
+
+    new THREE.GLTFLoader().parse(buf, '', function (gltf) {
+      root = gltf.scene;
+      scene.add(root);
+
+      root.traverse(function (o) {
+        if (o.isMesh) {
+          if (o.morphTargetInfluences && o.morphTargetInfluences.length) {
+            faceMeshes.push(o);
+          }
+        }
+      });
+
+      if (faceMeshes.length > 0 && faceMeshes[0].morphTargetDictionary) {
+        dict = faceMeshes[0].morphTargetDictionary;
+        names = Object.keys(dict).sort(function (a, b) { return dict[a] - dict[b]; });
+      }
+
+      head = findHeadNode(root);
+      eyeL = root.getObjectByName('Eye_L');
+      eyeR = root.getObjectByName('Eye_R');
+      lids = {
+        upL: root.getObjectByName('LidUp_L'), loL: root.getObjectByName('LidLo_L'),
+        upR: root.getObjectByName('LidUp_R'), loR: root.getObjectByName('LidLo_R')
+      };
+
+      mixer = new THREE.AnimationMixer(root);
+
+      // Register any clips embedded in GLTF
+      var gltfAnims = gltf.animations || [];
+      gltfAnims.forEach(function (c) {
+        var a = mixer.clipAction(c);
+        if (c.name === 'Idle' || c.name.toLowerCase().includes('loop')) {
+          a.setLoop(THREE.LoopRepeat, Infinity);
+        } else {
+          a.setLoop(THREE.LoopOnce, 1);
+          a.clampWhenFinished = true;
+        }
+        actions[c.name] = a;
+      });
+
+      // Scan native GLB skeleton/armature
+      scanSkeleton(root);
+
+      var hasSkel = detectedBones.length > 0;
+      var card = document.getElementById('skeleton-info-card');
+      var lblPB = document.getElementById('lbl-procedural-body');
+
+      if (hasSkel) {
+        if (card) card.style.display = 'block';
+        var bCountEl = document.getElementById('skeleton-bone-count');
+        if (bCountEl) bCountEl.textContent = detectedBones.length + ' ossos';
+        var mappedCount = 0;
+        for (var bk in skeletonRig) { if (skeletonRig[bk]) mappedCount++; }
+        var bStatusEl = document.getElementById('skeleton-rig-status');
+        if (bStatusEl) bStatusEl.textContent = mappedCount + ' partes mapeadas';
+        if (lblPB) lblPB.style.display = 'none';
+        removeExistingBody();
+      } else {
+        if (card) card.style.display = 'none';
+        if (lblPB) lblPB.style.display = 'flex';
+        buildBody();
+      }
+
+      // Register universal procedural animations (facial & body with native skeleton)
+      registerUniversalClips();
+
+      mixer.addEventListener('finished', function (e) {
+        if (actions.Idle && e.action !== actions.Idle) play('Idle');
+      });
+
+      updateClipsUI();
+      buildControls();
+      buildSkeletonControls();
+      updateSkeletonHelper();
+
+      if (isCustom) {
+        frameObject(root);
+      } else {
+        camera.position.set(0, -0.6, 2.8);
+        controls.target.set(0, -1.0, 0);
+        controls.update();
+      }
+
+      updateModelBadge(modelName, isCustom, Object.keys(actions).length, names.length);
+
+      if (actions.Idle) {
+        play('Idle');
+      } else if (Object.keys(actions).length > 0) {
+        play(Object.keys(actions)[0]);
+      } else {
+        enterManual();
+      }
+
+      statusEl.textContent = (modelName || 'Modelo') + ': ' + names.length + ' morph targets · ' + Object.keys(actions).length + ' clipes de animação';
+    }, function (err) {
+      statusEl.textContent = 'Erro ao processar o arquivo GLB';
+      console.error(err);
+      alert('Não foi possível carregar o arquivo 3D. Verifique se é um arquivo .glb ou .gltf válido do Blender.');
+    });
+  }
+
+  // File Upload & Drag and Drop Handling
+  var fileInput = document.getElementById('glb-file-input');
+  var browseBtn = document.getElementById('btn-browse-glb');
+  var dropZone = document.getElementById('drop-zone');
+  var dropOverlay = document.getElementById('drop-overlay');
+  var restoreBtn = document.getElementById('btn-restore-default');
+  var modelBadgeText = document.getElementById('model-badge-text');
+
+  function updateModelBadge(name, isCustom, animCount, morphCount) {
+    modelBadgeText.innerHTML = 'Modelo: <strong>' + escapeHtml(name) + '</strong> (' + morphCount + ' shapes, ' + animCount + ' anims)';
+    restoreBtn.style.display = isCustom ? 'inline-block' : 'none';
+    document.getElementById('app-title').textContent = isCustom ? ('Modelo: ' + name) : 'Personagem procedural · corpo + rig facial';
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (s) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s];
+    });
+  }
+
+  function handleUploadedFile(file) {
+    if (!file) return;
+    var n = file.name.toLowerCase();
+    if (!n.endsWith('.glb') && !n.endsWith('.gltf')) {
+      alert('Formato não suportado. Por favor envie um arquivo com extensão .glb ou .gltf');
+      return;
+    }
+    statusEl.textContent = 'Lendo ' + file.name + '…';
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      loadModelFromBuffer(e.target.result, file.name, true);
+    };
+    reader.onerror = function (err) {
+      statusEl.textContent = 'Erro na leitura do arquivo local';
+      console.error(err);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  browseBtn.addEventListener('click', function () {
+    fileInput.value = '';
+    fileInput.click();
+  });
+  dropZone.addEventListener('click', function () {
+    fileInput.value = '';
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (f) handleUploadedFile(f);
+  });
+  restoreBtn.addEventListener('click', function () {
+    loadModelFromBuffer(bytes.buffer, 'Personagem padrão', false);
+  });
+
+  // Prompt animation trigger
+  var promptInput = document.getElementById('prompt-input');
+  var btnRunPrompt = document.getElementById('btn-run-prompt');
+  function handlePromptSubmit() {
+    var val = promptInput.value.trim();
+    if (val) {
+      registerPromptAnimation(val);
+    }
+  }
+  if (btnRunPrompt && promptInput) {
+    btnRunPrompt.addEventListener('click', handlePromptSubmit);
+    promptInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') handlePromptSubmit();
+    });
+  }
+  document.querySelectorAll('.chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var txt = chip.getAttribute('data-prompt');
+      if (promptInput) promptInput.value = txt;
+      registerPromptAnimation(txt);
+    });
+  });
+
+  // Procedural body checkbox toggle
+  var chkProceduralBody = document.getElementById('chk-procedural-body');
+  if (chkProceduralBody) {
+    chkProceduralBody.addEventListener('change', function () {
+      if (!root) return;
+      buildBody();
+      registerUniversalClips();
+      updateClipsUI();
+      if (actions.Idle) play('Idle');
+    });
+  }
+
+  // Skeleton tabs & visualizer
+  var tabBtnFace = document.getElementById('tab-btn-face');
+  var tabBtnSkeleton = document.getElementById('tab-btn-skeleton');
+  var tabContentFace = document.getElementById('tab-content-face');
+  var tabContentSkeleton = document.getElementById('tab-content-skeleton');
+  if (tabBtnFace && tabBtnSkeleton) {
+    tabBtnFace.addEventListener('click', function () {
+      tabBtnFace.classList.add('active');
+      tabBtnSkeleton.classList.remove('active');
+      tabContentFace.style.display = 'block';
+      tabContentSkeleton.style.display = 'none';
+    });
+    tabBtnSkeleton.addEventListener('click', function () {
+      tabBtnSkeleton.classList.add('active');
+      tabBtnFace.classList.remove('active');
+      tabContentFace.style.display = 'none';
+      tabContentSkeleton.style.display = 'block';
+    });
+  }
+
+  var chkShowSkeleton = document.getElementById('chk-show-skeleton');
+  if (chkShowSkeleton) {
+    chkShowSkeleton.addEventListener('change', function () {
+      updateSkeletonHelper();
+    });
+  }
+
+  // Window-wide drag and drop
+  var dragDepth = 0;
+  window.addEventListener('dragenter', function (e) {
+    e.preventDefault();
+    dragDepth++;
+    dropOverlay.classList.add('active');
+    dropZone.classList.add('dragover');
+  });
+  window.addEventListener('dragleave', function (e) {
+    e.preventDefault();
+    dragDepth--;
+    if (dragDepth <= 0) {
+      dragDepth = 0;
+      dropOverlay.classList.remove('active');
+      dropZone.classList.remove('dragover');
+    }
+  });
+  window.addEventListener('dragover', function (e) {
+    e.preventDefault();
+  });
+  window.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dragDepth = 0;
+    dropOverlay.classList.remove('active');
+    dropZone.classList.remove('dragover');
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length > 0) {
+      handleUploadedFile(dt.files[0]);
+    }
+  });
+
+  // Load initial embedded model
+  loadModelFromBuffer(bytes.buffer, 'Personagem padrão', false);
 
   var clock = new THREE.Clock(), frame = 0;
   (function loop() {
@@ -5341,6 +6670,7 @@ input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent
       mixer.update(dt);
       if ((frame++ % 3) === 0) syncSlidersFromScene();
     }
+    if (skeletonHelper) skeletonHelper.update();
     controls.update();
     renderer.render(scene, camera);
   })();
